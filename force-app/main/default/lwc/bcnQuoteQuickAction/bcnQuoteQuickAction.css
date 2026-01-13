@@ -1,0 +1,342 @@
+/**
+ * TRINITY QUICK ACTION - SALESFORCE COMPATIBLE CENTERING
+ *
+ * Uses transform translate method compatible with Salesforce Quick Actions
+ * Trinity Deployment Architect - Salesforce Modal Solution
+ */
+
+/* SALESFORCE QUICK ACTION FIX: Remove fixed positioning */
+:host {
+    display: block !important;
+}
+
+/* SALESFORCE QUICK ACTION FIX: MAXIMUM SIZE - NO SCROLLING */
+.trinity-modal-overlay {
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 99vw !important;
+    max-width: 1400px !important;
+    height: 95vh !important;
+    max-height: 1000px !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    border-radius: 12px !important;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.15),
+        0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+}
+
+/* SALESFORCE QUICK ACTION FIX: Direct container */
+.trinity-modal-container {
+    width: 100% !important;
+    height: 100% !important;
+    position: relative !important;
+}
+
+/* Polished Modal Card */
+.trinity-modal-card {
+    width: 100% !important;
+    height: 100% !important;
+    background: #ffffff !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Polished Professional Header - MEDIVEST BRANDING */
+.trinity-modal-header {
+    background: #1E3A8A !important; /* MEDIVEST: Clean professional blue */
+    color: white !important;
+    padding: 24px 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 24px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 2px 8px rgba(30, 58, 138, 0.15) !important; /* MEDIVEST: Subtle brand shadow */
+}
+
+/* Clean Status Alert Styling */
+.status-success {
+    background: #2e844a !important;
+    color: white !important;
+    padding: 6px 12px !important;
+    border-radius: 4px !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.status-warning {
+    background: #fe9339 !important;
+    color: white !important;
+    padding: 6px 12px !important;
+    border-radius: 4px !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.status-error {
+    background: #ea001e !important;
+    color: white !important;
+    padding: 6px 12px !important;
+    border-radius: 4px !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.status-info {
+    background: #0176d3 !important;
+    color: white !important;
+    padding: 6px 12px !important;
+    border-radius: 4px !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+/* Clean Title Section */
+.trinity-title-section {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    flex: 1 !important;
+}
+
+.trinity-title-icon {
+    color: white !important;
+}
+
+.trinity-title {
+    font-size: 1.5rem !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+    color: white !important;
+}
+
+/* Clean Case Information */
+.trinity-case-info {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 1 !important;
+}
+
+.trinity-case-primary {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+.trinity-case-icon {
+    color: white !important;
+}
+
+.trinity-case-subject {
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    color: white !important;
+}
+
+.trinity-case-secondary {
+    display: flex !important;
+    align-items: center !important;
+    gap: 16px !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+}
+
+.trinity-priority-badge {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+    padding: 4px 8px !important;
+    border-radius: 12px !important;
+}
+
+.trinity-priority-icon {
+    color: white !important;
+}
+
+.trinity-priority-text {
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    color: white !important;
+}
+
+.trinity-case-number {
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    color: white !important;
+}
+
+/* TRINITY HEADER ENHANCEMENT: Bill Info Styling */
+.trinity-bill-info-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+}
+
+.trinity-bill-label {
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.trinity-bill-value {
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    color: white !important;
+    font-family: 'SF Mono', Consolas, monospace !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+    padding: 0.125rem 0.375rem !important;
+    border-radius: 0.25rem !important;
+}
+
+.trinity-bill-value-null {
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    color: #ffcc00 !important;
+    font-style: italic !important;
+    font-family: 'SF Mono', Consolas, monospace !important;
+    background: rgba(255, 204, 0, 0.2) !important;
+    padding: 0.125rem 0.375rem !important;
+    border-radius: 0.25rem !important;
+}
+
+.trinity-bill-icon {
+    color: white !important;
+    opacity: 0.8 !important;
+}
+
+.trinity-clock-icon {
+    color: white !important;
+}
+
+.trinity-last-modified {
+    font-size: 0.8rem !important;
+    color: white !important;
+    font-weight: 500 !important;
+}
+
+/* Clean Close Button */
+.trinity-close-button {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 4px !important;
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
+}
+
+.trinity-close-button:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
+}
+
+.trinity-close-button lightning-icon {
+    color: white !important;
+}
+
+/* Polished Content */
+.trinity-modal-content {
+    flex: 1 !important;
+    overflow: hidden !important;
+    background: #fafbfc !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Clean Loading State */
+.trinity-loading-state {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 200px !important;
+    gap: 16px !important;
+}
+
+.trinity-loading-text {
+    color: #6c757d !important;
+    font-size: 1rem !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+}
+
+/* Responsive Design - MAXIMUM SIZES */
+@media (max-width: 1400px) {
+    .trinity-modal-overlay {
+        width: 99vw !important;
+        max-width: 1600px !important;
+        height: 96vh !important;
+        max-height: 950px !important;
+    }
+}
+
+@media (max-width: 1024px) {
+    .trinity-modal-overlay {
+        width: 99vw !important;
+        max-width: 1500px !important;
+        height: 97vh !important;
+        max-height: 900px !important;
+    }
+
+    .trinity-modal-header {
+        flex-direction: column !important;
+        gap: 16px !important;
+        text-align: center !important;
+        padding: 16px 20px !important;
+    }
+
+    .trinity-title-section {
+        justify-content: center !important;
+    }
+
+    .trinity-case-secondary {
+        justify-content: center !important;
+        flex-wrap: wrap !important;
+        gap: 12px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .trinity-modal-overlay {
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: none !important;
+        max-height: none !important;
+        border-radius: 0 !important;
+    }
+
+    .trinity-modal-card {
+        border-radius: 0 !important;
+    }
+
+    .trinity-modal-header {
+        padding: 12px 16px !important;
+    }
+
+    .trinity-title {
+        font-size: 1.3rem !important;
+    }
+
+    .trinity-case-subject {
+        font-size: 1rem !important;
+    }
+}

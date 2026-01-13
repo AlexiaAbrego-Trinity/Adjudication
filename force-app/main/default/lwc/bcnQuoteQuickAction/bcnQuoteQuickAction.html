@@ -1,0 +1,106 @@
+<template>
+    <!-- TRINITY PROFESSIONAL QUICK ACTION MODAL -->
+    <template if:true={showModal}>
+        <!-- Professional Modal Overlay -->
+        <div class="trinity-modal-overlay">
+            <!-- Centered Modal Container -->
+            <div class="trinity-modal-container" role="dialog"
+                 tabindex="-1"
+                 aria-labelledby="modal-heading"
+                 aria-describedby="modal-content">
+
+                <!-- Professional Modal Card -->
+                <div class="trinity-modal-card">
+
+                    <!-- Professional Header -->
+                    <div class="trinity-modal-header">
+                        <!-- Status Alert -->
+                        <div class={statusAlert.class}>
+                            <span class="status-text">{statusAlert.text}</span>
+                        </div>
+
+                        <!-- Title Section -->
+                        <div class="trinity-title-section">
+                            <lightning-icon icon-name="standard:bill" size="small" class="trinity-title-icon"></lightning-icon>
+                            <h2 id="modal-heading" class="trinity-title">BCN/Quote Adjudication</h2>
+                        </div>
+
+                        <!-- Case Information + Bill Header Data -->
+                        <div class="trinity-case-info">
+                            <template if:true={caseSubject}>
+                                <div class="trinity-case-primary">
+                                    <lightning-icon icon-name="standard:case" size="x-small" class="trinity-case-icon"></lightning-icon>
+                                    <span class="trinity-case-subject">{caseSubject}</span>
+                                </div>
+                            </template>
+
+                            <div class="trinity-case-secondary">
+                                <template if:true={casePriority}>
+                                    <div class="trinity-priority-badge">
+                                        <lightning-icon icon-name={priorityIcon} size="xx-small" class="trinity-priority-icon"></lightning-icon>
+                                        <span class="trinity-priority-text">{casePriority} Priority</span>
+                                    </div>
+                                </template>
+                                <template if:true={caseNumber}>
+                                    <div class="trinity-case-number">Case {caseNumber}</div>
+                                </template>
+
+                                <!-- TRINITY HEADER ENHANCEMENT: Bill Header Fields - Always Visible -->
+                                <div class="trinity-bill-info-item">
+                                    <lightning-icon icon-name="standard:account" size="xx-small" class="trinity-bill-icon"></lightning-icon>
+                                    <span class="trinity-bill-label">Payee:</span>
+                                    <template if:true={billPayeeNameIsNull}>
+                                        <span class="trinity-bill-value trinity-bill-value-null">{billPayeeName}</span>
+                                    </template>
+                                    <template if:false={billPayeeNameIsNull}>
+                                        <span class="trinity-bill-value">{billPayeeName}</span>
+                                    </template>
+                                </div>
+                                <div class="trinity-bill-info-item">
+                                    <lightning-icon icon-name="standard:number_input" size="xx-small" class="trinity-bill-icon"></lightning-icon>
+                                    <span class="trinity-bill-label">BCN:</span>
+                                    <template if:true={billBCNNumberIsNull}>
+                                        <span class="trinity-bill-value trinity-bill-value-null">{billBCNNumber}</span>
+                                    </template>
+                                    <template if:false={billBCNNumberIsNull}>
+                                        <span class="trinity-bill-value">{billBCNNumber}</span>
+                                    </template>
+                                </div>
+                                <div class="trinity-bill-info-item">
+                                    <lightning-icon icon-name="standard:document" size="xx-small" class="trinity-bill-icon"></lightning-icon>
+                                    <span class="trinity-bill-label">Invoice:</span>
+                                    <template if:true={billInvoiceIdIsNull}>
+                                        <span class="trinity-bill-value trinity-bill-value-null">{billInvoiceId}</span>
+                                    </template>
+                                    <template if:false={billInvoiceIdIsNull}>
+                                        <span class="trinity-bill-value">{billInvoiceId}</span>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Close Button -->
+                        <button class="trinity-close-button"
+                                onclick={closeModal}
+                                title="Close modal">
+                            <lightning-icon icon-name="utility:close" size="small"></lightning-icon>
+                        </button>
+                    </div>
+
+                    <!-- Professional Content -->
+                    <div class="trinity-modal-content">
+                        <template if:true={effectiveRecordId}>
+                            <c-bcn-quote-tab-container record-id={effectiveRecordId}></c-bcn-quote-tab-container>
+                        </template>
+                        <template if:false={effectiveRecordId}>
+                            <div class="trinity-loading-state">
+                                <lightning-spinner alternative-text="Loading..." size="small"></lightning-spinner>
+                                <span class="trinity-loading-text">Loading case information...</span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+</template>
