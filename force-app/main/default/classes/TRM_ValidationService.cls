@@ -106,12 +106,13 @@ public with sharing class TRM_ValidationService {
         if (bcnCase.Date_Received__c == null) {
             failures.add(createRequiredFieldFailure('Received Date', 'Date_Received__c'));
         }
-        
+
         // Rule 4: Member (Entity) Required
-        if (bcnCase.BCN__r.Member_Account__c == null) {
+        // MVADM-188: Commented out - Member validation temporarily disabled
+        /* if (bcnCase.BCN__r.Member_Account__c == null) {
             failures.add(createRequiredFieldFailure('Member (Entity)', 'BCN__r.Member_Account__c'));
-        }
-        
+        } */
+
         // Rule 5: Payee (Entity) Required
         if (bcnCase.Payee_Name__c == null) {
             failures.add(createRequiredFieldFailure('Payee (Entity)', 'Payee_Name__c'));
@@ -682,9 +683,10 @@ public with sharing class TRM_ValidationService {
         if (!failedRuleIds.contains('bcn_missing_custodial_account__c')) {
             passedRules.add(new ValidationPass('bcn_missing_custodial_account__c', 'Custodial Account Present', 'BCN_LEVEL', 'Custodial Account is populated'));
         }
-        if (!failedRuleIds.contains('bcn_missing_bcn__r.member_account__c')) {
+        // MVADM-188: Commented out - Member validation temporarily disabled
+        /* if (!failedRuleIds.contains('bcn_missing_bcn__r.member_account__c')) {
             passedRules.add(new ValidationPass('bcn_missing_bcn__r.member_account__c', 'Member (Claimant) Present', 'BCN_LEVEL', 'Member Account is populated'));
-        }
+        } */
         if (!failedRuleIds.contains('bcn_missing_payee_name__c')) {
             passedRules.add(new ValidationPass('bcn_missing_payee_name__c', 'Payee Name Present', 'BCN_LEVEL', 'Payee Name is populated'));
         }

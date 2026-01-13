@@ -78,14 +78,14 @@ import BILL_LINE_ITEM_OBJECT from "@salesforce/schema/Bill_Line_Item__c";
 export default class CustomBillLineItemGrid extends LightningElement {
     // TRINITY: Simple, direct properties - NO over-engineering
     @api recordId; // Case ID
-    
+
     // Data properties
     @track lineItems = [];
     @track remarkCodeOptions = [];
     @track accountOptions = [];
     @track isLoading = true;
     @track error = null;
-    
+
     // Simple state management - NO Maps, NO complex objects
     @track selectedIds = new Set();
     @track currentStage = 'keying'; // 'keying' or 'billReview'
@@ -356,7 +356,7 @@ export default class CustomBillLineItemGrid extends LightningElement {
             return !this.paymentFixedAmount || this.paymentFixedAmount < 0;
         }
     }
-    
+
     // Utility methods
     formatCurrency(value) {
         if (!value) return '$0.00';
@@ -402,7 +402,7 @@ export default class CustomBillLineItemGrid extends LightningElement {
         // Fallback: return as-is
         return dateValue;
     }
-    
+
     showToast(title, message, variant = 'info') {
         this.dispatchEvent(new ShowToastEvent({
             title,
@@ -713,7 +713,7 @@ export default class CustomBillLineItemGrid extends LightningElement {
             console.error('Error loading accounts:', result.error);
         }
     }
-    
+
     @wire(getObjectInfo, { objectApiName: BILL_LINE_ITEM_OBJECT })
     objectInfo;
 
@@ -2445,8 +2445,12 @@ export default class CustomBillLineItemGrid extends LightningElement {
             // MVADM-188: Enrich code descriptions for tooltips on duplicated rows
             this.enrichCodeDescriptions();
 
-            // TRINITY PHASE 2: Immutable Set pattern - clear selection
+            // MVADM-188 FIX: Clear selection using proven refreshApex pattern
+            // Step 1: Clear the selectedIds Set
             this.selectedIds = new Set();
+
+            // Step 2: Refresh from server - this will call processLineItems() which sets selected: false
+            await refreshApex(this.wiredLineItemsResult);
 
             // Show success message
             this.dispatchEvent(new ShowToastEvent({
@@ -2480,11 +2484,33 @@ export default class CustomBillLineItemGrid extends LightningElement {
             try {
                 this.isLoading = true;
 
-                // Call Apex to delete items - TRINITY: Fix parameter name to match Apex method
-                await deleteBillLineItems({ itemIds: Array.from(this.selectedIds) });
+                // MVADM-188: Filter out draft rows before deletion (only delete real records)
+                const realIdsToDelete = Array.from(this.selectedIds).filter(id => id && !id.startsWith('draft-'));
 
-                // Remove deleted items from grid immediately
-                this.lineItems = this.lineItems.filter(item => !this.selectedIds.has(item.Id));
+                console.log('🗑️ MVADM-188: Deleting items...', realIdsToDelete);
+
+                if (realIdsToDelete.length === 0) {
+                    console.log('🗑️ No real items to delete (only draft rows selected)');
+                    this.dispatchEvent(new ShowToastEvent({
+                        title: 'Info',
+                        message: 'No saved items to delete',
+                        variant: 'info'
+                    }));
+                    this.selectedIds = new Set();
+                    this.isLoading = false;
+                    return;
+                }
+
+                // Call Apex to delete items
+                await deleteBillLineItems({ itemIds: realIdsToDelete });
+                console.log('🗑️ Apex deletion successful');
+
+                // MVADM-188 FIX: Refresh grid from database to ensure sync
+                await refreshApex(this.wiredLineItemsResult);
+                console.log('🗑️ Grid refreshed after deletion');
+
+                // MVADM-188 FIX: Re-sequence line numbers after deletion
+                await this.resequenceLineItems();
 
                 // TRINITY PHASE 2: Immutable Set pattern - clear selection
                 this.selectedIds = new Set();
@@ -2497,15 +2523,56 @@ export default class CustomBillLineItemGrid extends LightningElement {
                 }));
 
             } catch (error) {
-                console.error('Error deleting items:', error);
+                console.error('❌ Error deleting items:', error);
                 this.dispatchEvent(new ShowToastEvent({
                     title: 'Error',
-                    message: 'Failed to delete line items: ' + error.body?.message || error.message,
+                    message: 'Failed to delete line items: ' + (error.body?.message || error.message),
                     variant: 'error'
                 }));
             } finally {
                 this.isLoading = false;
             }
+        }
+    }
+
+    /**
+     * MVADM-188: Re-sequence line item numbers after deletion
+     * Updates Bill_Line_Item_Number__c to be sequential (1, 2, 3, ...)
+     */
+    async resequenceLineItems() {
+        try {
+            console.log('🔢 MVADM-188: Starting re-sequence...');
+            console.log('🔢 Total lineItems:', this.lineItems.length);
+
+            // Filter out draft row (items without real IDs)
+            const realItems = this.lineItems.filter(item => item.Id && !item.Id.startsWith('draft-'));
+            console.log('🔢 Real items to re-sequence:', realItems.length);
+
+            if (realItems.length === 0) {
+                console.log('🔢 No items to re-sequence');
+                return;
+            }
+
+            // Prepare items for Apex update (only ID and new line number)
+            const itemsToUpdate = realItems.map((item, index) => ({
+                Id: item.Id,
+                Bill_Line_Item_Number__c: index + 1
+            }));
+
+            console.log('🔢 Items to update:', itemsToUpdate);
+
+            // Call Apex to persist the new line numbers
+            await updateBillLineItems({ lineItems: itemsToUpdate });
+            console.log('🔢 Apex update successful');
+
+            // Refresh grid to show updated line numbers
+            await refreshApex(this.wiredLineItemsResult);
+            console.log('🔢 Grid refreshed - re-sequence complete');
+
+        } catch (error) {
+            console.error('❌ Error re-sequencing line items:', error);
+            console.error('❌ Error details:', error.body?.message || error.message);
+            // Don't show error toast - deletion was successful, re-sequencing is enhancement
         }
     }
 
