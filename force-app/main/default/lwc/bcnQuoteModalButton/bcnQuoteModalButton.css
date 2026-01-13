@@ -1,0 +1,205 @@
+/**
+ * BCN Quote Modal Button - TRINITY SURGICAL MODAL STYLES
+ * 
+ * EXACT REPLICA of bcnQuoteEmbeddedInterface styles adapted for modal
+ * Trinity Deployment Architect - MVADM-77 Implementation
+ */
+
+/* TRINITY MODAL: SIMPLE ORANGE LAUNCH BUTTON */
+.modal-launch-btn {
+    background: linear-gradient(135deg, #ff9500 0%, #ff7b00 100%) !important;
+    border: none !important;
+    color: white !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 4px rgba(255, 149, 0, 0.3) !important;
+    transition: all 0.2s ease !important;
+}
+
+.modal-launch-btn:hover {
+    background: linear-gradient(135deg, #ff7b00 0%, #ff6600 100%) !important;
+    box-shadow: 0 4px 8px rgba(255, 149, 0, 0.4) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* TRINITY MODAL: Large Modal Container */
+.slds-modal_large .slds-modal__container {
+    max-width: 95vw !important;
+    width: 95vw !important;
+    min-height: 85vh !important;
+    max-height: 95vh !important;
+}
+
+/* TRINITY MODAL: BLUE HEADER - BACK TO PROFESSIONAL BLUE */
+.modal-header-custom {
+    background: linear-gradient(135deg, #1b96ff 0%, #0176d3 100%) !important;
+    color: white !important;
+    padding: 1rem 1.5rem !important;
+    border-bottom: none !important;
+}
+
+.modal-header-content {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+}
+
+/* EXACT REPLICA: Header sections from bcnQuoteEmbeddedInterface */
+.header-section-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+}
+
+.header-section-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    flex-grow: 1;
+    text-align: center;
+    padding: 0 1rem;
+}
+
+.header-section-right {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+/* TRINITY MODAL: SIMPLE STATUS ALERTS - BACK TO ORIGINAL */
+.status-info { background: #0176d3; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; }
+.status-warning { background: #ff9500; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; }
+.status-progress { background: #2e844a; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; }
+.status-success { background: #2e844a; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; }
+.status-error { background: #c23934; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; }
+
+/* TRINITY MODAL: SIMPLE TITLE SECTION - BACK TO ORIGINAL */
+.title-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.header-title {
+    font-size: 1.125rem !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+    color: white !important;
+}
+
+.title-icon {
+    color: white !important;
+}
+
+/* TRINITY MODAL: SIMPLE CASE INFORMATION - BACK TO ORIGINAL */
+.case-info-primary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+.case-info-secondary {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.8125rem;
+    opacity: 0.9;
+}
+
+.case-subject-wide {
+    color: white;
+    font-weight: 600;
+}
+
+.priority-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.125rem 0.5rem;
+    border-radius: 1rem;
+}
+
+.case-number {
+    color: white;
+    font-weight: 500;
+}
+
+/* TRINITY HEADER ENHANCEMENT: Bill Info Styling */
+.bill-info-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: white;
+}
+
+.bill-label {
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+.bill-value {
+    font-weight: 500;
+}
+
+.bill-value-null {
+    font-weight: 500;
+    color: #ffcc00 !important;
+    font-style: italic;
+    opacity: 0.9;
+}
+
+.bill-icon {
+    color: white;
+    opacity: 0.8;
+}
+
+/* TRINITY MODAL: Custom Content Area */
+.modal-content-custom {
+    padding: 0 !important;
+    overflow-y: auto !important;
+    max-height: calc(85vh - 120px) !important;
+}
+
+/* EXACT REPLICA: Loading state */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    gap: 1rem;
+}
+
+.loading-text {
+    color: #706e6b;
+    font-size: 0.875rem;
+}
+
+/* TRINITY MODAL: SIMPLE CLOSE BUTTON - BACK TO ORIGINAL */
+.slds-modal__close {
+    color: white !important;
+    background: transparent !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 0.25rem !important;
+    padding: 0.5rem !important;
+    transition: all 0.2s ease !important;
+}
+
+.slds-modal__close:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* TRINITY MODAL: Ensure proper z-index for modal */
+.slds-modal {
+    z-index: 9000 !important;
+}
+
+.slds-backdrop {
+    z-index: 8999 !important;
+}

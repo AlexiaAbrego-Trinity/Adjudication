@@ -1,0 +1,146 @@
+.notes-tab-container {
+    background: white;
+    min-height: 400px;
+}
+
+/* Header styling */
+.slds-page-header {
+    background: #fafaf9;
+    border-bottom: 1px solid #dddbda;
+    margin-bottom: 1rem;
+}
+
+/* Form styling */
+.slds-card {
+    box-shadow: none;
+    border: 1px solid #dddbda;
+}
+
+/* Textarea styling */
+.internal-note-field,
+.eob-note-field {
+    min-height: 200px;
+}
+
+.internal-note-field textarea,
+.eob-note-field textarea {
+    font-family: 'Salesforce Sans', Arial, sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+/* Character count styling */
+.char-count {
+    font-size: 0.75rem;
+    color: #706e6b;
+    text-align: right;
+    margin-top: 0.25rem;
+}
+
+.char-count.caution {
+    color: #ff9500;
+    font-weight: 500;
+}
+
+.char-count.warning {
+    color: #ea001e;
+    font-weight: 700;
+}
+
+/* Button styling */
+.save-button {
+    --sds-c-button-brand-color-background: #0176d3;
+}
+
+.cancel-button {
+    --sds-c-button-neutral-color-border: #dddbda;
+}
+
+/* Unsaved changes alert */
+.slds-alert_warning {
+    margin-bottom: 1rem;
+}
+
+/* Form help text */
+.slds-form-element__help {
+    font-size: 0.75rem;
+    color: #706e6b;
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+/* Required field indicator */
+.slds-required {
+    color: #ea001e;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .slds-page-header__row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .slds-page-header__col-actions {
+        margin-top: 1rem;
+        width: 100%;
+    }
+    
+    .slds-page-header__controls {
+        width: 100%;
+    }
+    
+    .slds-button-group {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+    }
+    
+    .internal-note-field,
+    .eob-note-field {
+        min-height: 150px;
+    }
+}
+
+/* Focus states for accessibility */
+.internal-note-field:focus-within,
+.eob-note-field:focus-within {
+    box-shadow: 0 0 0 2px #0176d3;
+    border-radius: 0.25rem;
+}
+
+/* Loading state */
+.notes-tab-container[data-loading="true"] {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .slds-card {
+        border-color: #000;
+    }
+    
+    .char-count.caution {
+        color: #b45f00;
+    }
+    
+    .char-count.warning {
+        color: #c23934;
+    }
+}
+
+/* Print styles */
+@media print {
+    .slds-page-header__col-actions {
+        display: none;
+    }
+    
+    .slds-alert_warning {
+        display: none;
+    }
+    
+    .notes-tab-container {
+        box-shadow: none;
+    }
+}

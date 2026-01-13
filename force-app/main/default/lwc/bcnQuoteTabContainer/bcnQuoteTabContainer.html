@@ -1,0 +1,174 @@
+<template>
+    <div class="compact-interface">
+        <!-- Main Content Area -->
+        <div class="main-content-area">
+            <!-- Compact Grid Section - Line Items Priority -->
+            <div class="grid-section">
+                <div class="grid-content">
+                    <c-custom-bill-line-item-grid record-id={recordId}></c-custom-bill-line-item-grid>
+                </div>
+            </div>
+
+            <!-- Bulk Actions Panel - Alt+Click Workflow -->
+            <!-- NOTE: TEMPORARILY DISABLED - Was hiding horizontal scrollbar at bottom of grid -->
+            <!-- TODO: Re-enable after implementing proper z-index layering or repositioning -->
+            <!-- REASON: Horizontal scrollbar visibility is critical for grid navigation -->
+            <!--
+            <div class="bulk-actions-panel">
+                <div class="bulk-actions-header">
+                    <div class="bulk-actions-title">
+                        <lightning-icon icon-name="utility:multi_select_checkbox" size="small"></lightning-icon>
+                        <span>Bulk Operations</span>
+                        <span class="feature-status">Preview - Not Yet Implemented</span>
+                    </div>
+                </div>
+                <div class="bulk-actions-content">
+                    <div class="bulk-action-group">
+                        <div class="bulk-action-item">
+                            <lightning-icon icon-name="utility:percent" size="x-small"></lightning-icon>
+                            <span class="action-label">Apply % of Charge</span>
+                            <span class="action-shortcut">Alt+Click</span>
+                        </div>
+                        <div class="bulk-action-item">
+                            <lightning-icon icon-name="utility:currency" size="x-small"></lightning-icon>
+                            <span class="action-label">Set Dollar Amount</span>
+                            <span class="action-shortcut">Alt+Click</span>
+                        </div>
+                        <div class="bulk-action-item">
+                            <lightning-icon icon-name="utility:sum" size="x-small"></lightning-icon>
+                            <span class="action-label">Calculate Sum</span>
+                            <span class="action-shortcut">Alt+Click</span>
+                        </div>
+                        <div class="bulk-action-item">
+                            <lightning-icon icon-name="utility:clear" size="x-small"></lightning-icon>
+                            <span class="action-label">Clear Values</span>
+                            <span class="action-shortcut">Alt+Click</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            -->
+        </div>
+
+        <!-- SIDE TABS DISABLED FOR V1 PRODUCTION - Re-enable for V2 -->
+        <!--
+        <template if:true={showReferenceOverlay}>
+            <div class="reference-overlay" onclick={closeOverlay}>
+                <div class="overlay-content" onclick={stopPropagation}>
+                    <div class="overlay-header">
+                        <h3 class="overlay-title">
+                            <lightning-icon icon-name={overlayIcon} size="small"></lightning-icon>
+                            {overlayTitle}
+                        </h3>
+                        <button class="overlay-close" onclick={closeOverlay} title="Close">
+                            <lightning-icon icon-name="utility:close" size="small"></lightning-icon>
+                        </button>
+                    </div>
+                    <div class="overlay-body">
+                        <template if:true={summaryTabActive}>
+                            <div class="content-panel">
+                                <div class="tab-section-header">
+                                    <h3 class="section-title">
+                                        <lightning-icon icon-name="standard:dashboard" size="small"></lightning-icon>
+                                        Adjudication Summary & Controls
+                                    </h3>
+                                    <p class="section-subtitle">BCN toggles, flags, and adjudication controls</p>
+                                </div>
+                                <c-adjudication-control-panel record-id={recordId}></c-adjudication-control-panel>
+                                <c-bill-flags-manager record-id={recordId}></c-bill-flags-manager>
+                            </div>
+                        </template>
+
+                        <template if:true={accountsTabActive}>
+                            <div class="content-panel">
+                                <div class="tab-section-header">
+                                    <h3 class="section-title">
+                                        <lightning-icon icon-name="standard:account" size="small"></lightning-icon>
+                                        Member Accounts
+                                    </h3>
+                                    <p class="section-subtitle">MSA, PCA, SAK account balances, effective dates, and fund availability</p>
+                                </div>
+                                <c-accounts-tab-content record-id={recordId}></c-accounts-tab-content>
+                            </div>
+                        </template>
+
+                        <template if:true={injuryTabActive}>
+                            <div class="content-panel">
+                                <c-injury-tab-content record-id={recordId}></c-injury-tab-content>
+                            </div>
+                        </template>
+
+                        <template if:true={coverageTabActive}>
+                            <div class="content-panel">
+                                <c-coverage-tab-content record-id={recordId}></c-coverage-tab-content>
+                            </div>
+                        </template>
+
+                        <template if:true={rxTabActive}>
+                            <div class="content-panel">
+                                <c-rx-tab-content record-id={recordId}></c-rx-tab-content>
+                            </div>
+                        </template>
+
+                        <template if:true={restrictionsTabActive}>
+                            <div class="content-panel">
+                                <c-restrictions-tab-content record-id={recordId}></c-restrictions-tab-content>
+                            </div>
+                        </template>
+
+                        <template if:true={cobTabActive}>
+                            <div class="content-panel">
+                                <c-cob-tab-content record-id={recordId}></c-cob-tab-content>
+                            </div>
+                        </template>
+
+                        <template if:true={miscTabActive}>
+                            <div class="content-panel">
+                                <div class="tab-section-header">
+                                    <h3 class="section-title">
+                                        <lightning-icon icon-name="standard:note" size="small"></lightning-icon>
+                                        Miscellaneous Notes
+                                    </h3>
+                                    <p class="section-subtitle">Special notes relevant to Member Accounts</p>
+                                </div>
+                                <c-bcn-quote-notes-tab record-id={recordId}></c-bcn-quote-notes-tab>
+                            </div>
+                        </template>
+
+                        <template if:true={dmeTabActive}>
+                            <div class="content-panel">
+                                <c-dme-tab-content record-id={recordId}></c-dme-tab-content>
+                            </div>
+                        </template>
+
+                        <template if:true={eobTabActive}>
+                            <div class="content-panel">
+                                <div class="tab-section-header">
+                                    <h3 class="section-title">
+                                        <lightning-icon icon-name="standard:document" size="small"></lightning-icon>
+                                        EOB Notes
+                                    </h3>
+                                    <p class="section-subtitle">Internal and public-facing EOB notes</p>
+                                </div>
+                                <c-bcn-quote-notes-tab record-id={recordId}></c-bcn-quote-notes-tab>
+                            </div>
+                        </template>
+
+                        <template if:true={documentsTabActive}>
+                            <div class="content-panel">
+                                <c-document-management-tab record-id={recordId}></c-document-management-tab>
+                            </div>
+                        </template>
+
+                        <template if:true={verificationTabActive}>
+                            <div class="content-panel">
+                                <c-verification-tab-content record-id={recordId}></c-verification-tab-content>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </template>
+        -->
+    </div>
+</template>

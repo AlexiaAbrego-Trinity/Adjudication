@@ -1,0 +1,152 @@
+<template>
+    <!-- Trigger Button -->
+    <lightning-button 
+        label={buttonLabel}
+        onclick={openModal}
+        variant={buttonVariant}
+        class="slds-m-bottom_small"
+        icon-name="utility:table"
+        icon-position="left">
+    </lightning-button>
+    
+    <!-- Modal -->
+    <template if:true={showModal}>
+        <!-- Modal Container -->
+        <section
+            class={modalClasses}
+            style="z-index: 9999;"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-heading"
+            aria-describedby="modal-content">
+            
+            <div 
+                class="slds-modal__container" 
+                style={modalContainerStyle}>
+                
+                <!-- Modal Header -->
+                <header class="slds-modal__header">
+                    <h2 
+                        id="modal-heading"
+                        class="slds-text-heading_medium slds-hyphenate">
+                        <lightning-icon 
+                            icon-name="utility:table" 
+                            size="small" 
+                            class="slds-m-right_x-small">
+                        </lightning-icon>
+                        {modalTitle}
+                    </h2>
+                    
+                    <button 
+                        class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" 
+                        onclick={closeModal}
+                        title="Close Modal"
+                        aria-label="Close Modal">
+                        <lightning-icon 
+                            icon-name="utility:close" 
+                            alternative-text="Close" 
+                            size="small">
+                        </lightning-icon>
+                        <span class="slds-assistive-text">Close</span>
+                    </button>
+                </header>
+                
+                <!-- Modal Content -->
+                <div 
+                    id="modal-content"
+                    class="slds-modal__content" 
+                    style={modalContentStyle}>
+                    
+                    <!-- Loading Spinner -->
+                    <template if:true={isLoading}>
+                        <div class="slds-is-relative" style="height: 200px;">
+                            <lightning-spinner 
+                                alternative-text="Loading adjudication grid..."
+                                size="large">
+                            </lightning-spinner>
+                            <div class="slds-text-align_center slds-m-top_large">
+                                <p class="slds-text-heading_small">Loading Bill Line Items...</p>
+                                <p class="slds-text-body_small slds-text-color_weak">
+                                    Preparing adjudication interface
+                                </p>
+                            </div>
+                        </div>
+                    </template>
+                    
+                    <!-- Raven Grids Component Integration -->
+                    <template if:false={isLoading}>
+                        <div style={gridContainerStyle}>
+                            <!--
+                                CORRECT RAVEN GRIDS INTEGRATION
+                                Based on RavenApps Grids package structure
+                                Component namespace: RavenApps
+                            -->
+                            <div class="raven-grid-container" style="height: 100%; width: 100%;">
+                                <!-- Primary Integration Method: Standard Lightning Datatable -->
+                                <!-- Note: RavenApps components need to be configured through Lightning App Builder -->
+                                <!-- This is a placeholder for the grid integration -->
+                                <div class="slds-text-align_center slds-p-around_large">
+                                    <lightning-icon icon-name="utility:database" size="large"></lightning-icon>
+                                    <h3 class="slds-text-heading_medium slds-m-top_medium">
+                                        Raven Grid Integration
+                                    </h3>
+                                    <p class="slds-text-body_regular slds-m-top_small">
+                                        Grid ID: {gridId}<br/>
+                                        Record ID: {recordId}
+                                    </p>
+                                    <p class="slds-text-body_small slds-text-color_weak slds-m-top_small">
+                                        Configure this component in Lightning App Builder to display the Raven Grid.
+                                    </p>
+                                </div>
+
+                                <!-- Alternative: Main Grid component for Lightning App Builder -->
+                                <!--
+                                Alternative component names based on RavenApps package analysis:
+                                - c-raven-apps__modal-grid-view (CURRENT - for modal implementation)
+                                - Lightning App Builder: "Grids > by RavenApps" (for page layouts)
+
+                                Package: RavenApps Grids v6.8.0.1
+                                Verified components: RavenApps__modalGridView, RavenApps__gridBuilder, etc.
+                                -->
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                
+                <!-- Modal Footer -->
+                <footer class="slds-modal__footer">
+                    <div class="slds-grid slds-grid_align-spread">
+                        <!-- Left side - Info -->
+                        <div class="slds-col">
+                            <p class="slds-text-body_small slds-text-color_weak">
+                                <lightning-icon 
+                                    icon-name="utility:info" 
+                                    size="xx-small" 
+                                    class="slds-m-right_xx-small">
+                                </lightning-icon>
+                                Use inline editing for adjudication fields
+                            </p>
+                        </div>
+                        
+                        <!-- Right side - Actions -->
+                        <div class="slds-col slds-no-flex">
+                            <lightning-button 
+                                label="Close" 
+                                onclick={closeModal}
+                                variant="neutral"
+                                class="slds-m-left_x-small">
+                            </lightning-button>
+                        </div>
+                    </div>
+                </footer>
+            </div>
+        </section>
+        
+        <!-- Modal Backdrop -->
+        <div 
+            class="slds-backdrop slds-backdrop_open" 
+            onclick={handleBackdropClick}
+            style="z-index: 9998;">
+        </div>
+    </template>
+</template>

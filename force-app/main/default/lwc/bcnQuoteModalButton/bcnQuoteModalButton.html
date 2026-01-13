@@ -1,0 +1,122 @@
+<template>
+    <!-- TRINITY SURGICAL MODAL LAUNCHER - EXACT REPLICA OF bcnQuoteEmbeddedInterface AS MODAL -->
+    
+    <!-- Simple Orange Launch Button -->
+    <lightning-button 
+        label="BCN/Quote Adjudication"
+        variant="brand"
+        onclick={openModal}
+        class="modal-launch-btn"
+        title="Launch BCN/Quote Adjudication in modal">
+    </lightning-button>
+
+    <!-- SLDS Modal Container - EXACT REPLICA OF bcnQuoteEmbeddedInterface CONTENT -->
+    <template if:true={showModal}>
+        <section role="dialog" 
+                 tabindex="-1" 
+                 aria-labelledby="modal-heading" 
+                 aria-modal="true" 
+                 class="slds-modal slds-fade-in-open slds-modal_large">
+            <div class="slds-modal__container">
+                
+                <!-- Modal Header - TRINITY WIDE SCREEN OPTIMIZED -->
+                <header class="slds-modal__header modal-header-custom">
+                    <div class="modal-header-content">
+                        <!-- Left Section: Status + Title (EXACT REPLICA) -->
+                        <div class="header-section-left">
+                            <div class={statusAlert.class}>
+                                <span class="status-text">{statusAlert.text}</span>
+                            </div>
+                            <div class="title-section">
+                                <lightning-icon icon-name="standard:bill" size="small" class="title-icon"></lightning-icon>
+                                <h2 id="modal-heading" class="header-title">BCN/Quote Adjudication</h2>
+                            </div>
+                        </div>
+
+                        <!-- Center Section: Case Information + Bill Header Data -->
+                        <div class="header-section-center">
+                            <template if:true={caseSubject}>
+                                <div class="case-info-primary">
+                                    <lightning-icon icon-name="standard:case" size="x-small" class="case-icon"></lightning-icon>
+                                    <span class="case-subject-wide">{caseSubject}</span>
+                                </div>
+                            </template>
+
+                            <div class="case-info-secondary">
+                                <template if:true={casePriority}>
+                                    <div class="priority-badge">
+                                        <lightning-icon icon-name={priorityIcon} size="xx-small" class="priority-icon"></lightning-icon>
+                                        <span class="priority-text">{casePriority} Priority</span>
+                                    </div>
+                                </template>
+                                <template if:true={caseNumber}>
+                                    <div class="case-reference">
+                                        <span class="case-number">Case {caseNumber}</span>
+                                    </div>
+                                </template>
+
+                                <!-- TRINITY HEADER ENHANCEMENT: Bill Header Fields - Always Visible -->
+                                <div class="bill-info-item">
+                                    <lightning-icon icon-name="standard:account" size="xx-small" class="bill-icon"></lightning-icon>
+                                    <span class="bill-label">Payee:</span>
+                                    <template if:true={billPayeeNameIsNull}>
+                                        <span class="bill-value bill-value-null">{billPayeeName}</span>
+                                    </template>
+                                    <template if:false={billPayeeNameIsNull}>
+                                        <span class="bill-value">{billPayeeName}</span>
+                                    </template>
+                                </div>
+                                <div class="bill-info-item">
+                                    <lightning-icon icon-name="standard:number_input" size="xx-small" class="bill-icon"></lightning-icon>
+                                    <span class="bill-label">BCN:</span>
+                                    <template if:true={billBCNNumberIsNull}>
+                                        <span class="bill-value bill-value-null">{billBCNNumber}</span>
+                                    </template>
+                                    <template if:false={billBCNNumberIsNull}>
+                                        <span class="bill-value">{billBCNNumber}</span>
+                                    </template>
+                                </div>
+                                <div class="bill-info-item">
+                                    <lightning-icon icon-name="standard:document" size="xx-small" class="bill-icon"></lightning-icon>
+                                    <span class="bill-label">Invoice:</span>
+                                    <template if:true={billInvoiceIdIsNull}>
+                                        <span class="bill-value bill-value-null">{billInvoiceId}</span>
+                                    </template>
+                                    <template if:false={billInvoiceIdIsNull}>
+                                        <span class="bill-value">{billInvoiceId}</span>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Section: Close Button -->
+                        <div class="header-section-right">
+                            <button class="slds-button slds-button_icon slds-modal__close" 
+                                    onclick={closeModal}
+                                    title="Close modal">
+                                <lightning-icon icon-name="utility:close" size="small"></lightning-icon>
+                                <span class="slds-assistive-text">Close</span>
+                            </button>
+                        </div>
+                    </div>
+                </header>
+                
+                <!-- Modal Body - EXACT REPLICA: bcnQuoteTabContainer with ALL TABS AND GRID -->
+                <div class="slds-modal__content slds-p-around_none modal-content-custom">
+                    <template if:true={effectiveRecordId}>
+                        <c-bcn-quote-tab-container record-id={effectiveRecordId}></c-bcn-quote-tab-container>
+                    </template>
+                    <template if:false={effectiveRecordId}>
+                        <div class="loading-state">
+                            <lightning-spinner alternative-text="Loading..." size="small"></lightning-spinner>
+                            <span class="loading-text">Loading case information...</span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Modal Backdrop -->
+        <div class="slds-backdrop slds-backdrop_open" onclick={closeModal}></div>
+    </template>
+</template>

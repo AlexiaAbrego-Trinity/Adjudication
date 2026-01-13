@@ -1,0 +1,242 @@
+/* =============================================================================
+ * BCN/Quote Grid Modal - Professional Styling
+ * Optimized for Raven Grids integration and SLDS compliance
+ * ============================================================================= */
+
+/* Modal Container */
+
+div.modal-overlay {
+    width: unset !important;
+    max-width: none !important;
+}
+
+div.slds-modal__content div.modal-overlay {
+    width: unset !important;
+    max-width: none !important;
+}
+
+.modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 2590px !important; /*width: 100% ;*/
+    height: 100%;
+    z-index: 9999;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Modal Content */
+.modal-content {
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    width: 95vw;
+    height: 90vh;
+    max-width: 1400px;
+    max-height: 900px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Modal Header */
+.modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e5e5e5;
+    background: #f8f9fa;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #181818;
+    margin: 0;
+}
+
+/* Modal Body */
+.modal-body {
+    flex: 1;
+    padding: 1rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Grid Container */
+.grid-container {
+    flex: 1;
+    border: 1px solid #e5e5e5;
+    border-radius: 0.25rem;
+    overflow: hidden;
+    background: white;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Grid Placeholder */
+.grid-placeholder {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 2rem;
+    text-align: center;
+    background: #fafafa;
+}
+
+.grid-placeholder lightning-icon {
+    margin-bottom: 1rem;
+}
+
+.grid-placeholder h3 {
+    margin: 0 0 0.5rem 0;
+    color: #181818;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.grid-placeholder p {
+    margin: 0.25rem 0;
+    color: #706e6b;
+    line-height: 1.5;
+}
+
+/* Button Styling */
+.modal-button {
+    min-width: 6rem;
+    padding: 0.5rem 1rem;
+}
+
+/* Loading State */
+.loading-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    flex-direction: column;
+}
+
+.loading-spinner {
+    margin-bottom: 1rem;
+}
+
+/* Error State */
+.error-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    flex-direction: column;
+    color: #c23934;
+}
+
+.error-container lightning-icon {
+    margin-bottom: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 98vw;
+        height: 95vh;
+        margin: 1rem;
+    }
+    
+    .modal-header {
+        padding: 0.75rem 1rem;
+    }
+    
+    .modal-title {
+        font-size: 1.125rem;
+    }
+    
+    .modal-body {
+        padding: 0.75rem;
+    }
+}
+
+/* SLDS Overrides for Modal */
+.slds-modal__container {
+    width: 95vw !important;
+    max-width: 1400px !important;
+    height: 90vh !important;
+    max-height: 900px !important;
+}
+
+.slds-modal__content {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Professional Styling */
+.professional-modal {
+    font-family: 'Salesforce Sans', Arial, sans-serif;
+}
+
+.professional-modal .slds-text-heading_medium {
+    font-weight: 600;
+    color: #181818;
+}
+
+.professional-modal .slds-text-body_regular {
+    color: #706e6b;
+    line-height: 1.5;
+}
+
+.professional-modal .slds-text-body_small {
+    color: #706e6b;
+    font-size: 0.875rem;
+}
+
+/* Grid Integration Styling */
+.raven-grid-container {
+    height: 100%;
+    width: 100%;
+    border: none;
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+/* Accessibility */
+.modal-container:focus {
+    outline: none;
+}
+
+.modal-content:focus {
+    outline: 2px solid #0176d3;
+    outline-offset: -2px;
+}
+
+/* Animation */
+.modal-container {
+    animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+    animation: slideIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { 
+        opacity: 0;
+        transform: scale(0.95) translateY(-20px);
+    }
+    to { 
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}

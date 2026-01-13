@@ -1,0 +1,199 @@
+/**
+ * BCN Quote Modal Launcher - Pure Button Component Styles
+ * 
+ * RAY'S MODAL: Dedicated styling for modal launcher button
+ * Trinity Deployment Architect - MVADM-77 Implementation
+ * Matt's #2 Priority: Orange button that launches modal interface
+ */
+
+/* Container */
+.modal-launcher-container {
+    display: block;
+    width: 100%;
+}
+
+/* RAY'S MODAL: Pure Launch Button Styling */
+.modal-launch-button {
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(135deg, #ff9500 0%, #ffb75d 100%);
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 700;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(255, 149, 0, 0.25);
+    font-family: 'Salesforce Sans', Arial, sans-serif;
+    position: relative;
+    overflow: hidden;
+}
+
+.modal-launch-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 149, 0, 0.35);
+    background: linear-gradient(135deg, #e8850a 0%, #ff9500 100%);
+}
+
+.modal-launch-button:focus {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+.modal-launch-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(255, 149, 0, 0.4);
+}
+
+/* Button Text */
+.button-text {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: white;
+    flex-grow: 1;
+    text-align: left;
+}
+
+/* Launch Icon */
+.launch-icon {
+    color: white;
+    flex-shrink: 0;
+    margin-left: 0.5rem;
+}
+
+/* Button Size Variations */
+.button-small {
+    height: 32px;
+    font-size: 0.875rem;
+    padding: 0 0.75rem;
+}
+
+.button-small .button-text {
+    font-size: 0.875rem;
+}
+
+.button-medium {
+    height: 40px;
+    font-size: 0.9375rem;
+    padding: 0 0.875rem;
+}
+
+.button-medium .button-text {
+    font-size: 0.9375rem;
+}
+
+.button-large {
+    height: 48px;
+    font-size: 1rem;
+    padding: 0 1rem;
+}
+
+/* RAY'S MODAL: Modal Header Orange Styling */
+.modal-header-orange {
+    background: linear-gradient(135deg, #ff9500 0%, #ffb75d 100%);
+    color: white;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-header-orange .slds-modal__title {
+    color: white;
+    font-weight: 700;
+    font-size: 1.25rem;
+}
+
+.modal-subtitle {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin: 0;
+}
+
+.modal-header-orange .slds-button_icon-inverse {
+    color: white;
+}
+
+.modal-header-orange .slds-button_icon-inverse:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Loading State */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+}
+
+.loading-text {
+    margin-top: 1rem;
+    color: #5c6b73;
+    font-size: 0.875rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .modal-launch-button {
+        height: 44px;
+        font-size: 0.9375rem;
+    }
+    
+    .button-text {
+        font-size: 0.9375rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-launch-button {
+        height: 40px;
+        font-size: 0.875rem;
+        padding: 0 0.75rem;
+    }
+    
+    .button-text {
+        font-size: 0.875rem;
+    }
+}
+
+/* Accessibility Enhancements */
+@media (prefers-reduced-motion: reduce) {
+    .modal-launch-button {
+        transition: none;
+    }
+    
+    .modal-launch-button:hover {
+        transform: none;
+    }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .modal-launch-button {
+        background: #ff6600;
+        border: 2px solid #ffffff;
+    }
+    
+    .modal-launch-button:hover {
+        background: #e55a00;
+    }
+}
+
+/* Focus Visible for Better Accessibility */
+.modal-launch-button:focus-visible {
+    outline: 3px solid #ffffff;
+    outline-offset: 2px;
+}
+
+/* Print Styles */
+@media print {
+    .modal-launch-button {
+        display: none;
+    }
+}

@@ -1,0 +1,102 @@
+<template>
+    <div class={containerClass}>
+        <!-- TRINITY WIDE SCREEN OPTIMIZED HEADER -->
+        <div class="compact-header" onclick={handleToggle} title="Click to expand BCN/Quote Adjudication details">
+            <div class="header-content-wide">
+                <!-- Left Section: Status + Title -->
+                <div class="header-section-left">
+                    <div class={statusAlert.class}>
+                        <span class="status-text">{statusAlert.text}</span>
+                    </div>
+                    <div class="title-section">
+                        <lightning-icon icon-name="standard:bill" size="small" class="title-icon"></lightning-icon>
+                        <h3 class="header-title">BCN/Quote Adjudication</h3>
+                    </div>
+                </div>
+
+                <!-- Center Section: Case Information + Bill Header Data -->
+                <div class="header-section-center">
+                    <template if:true={caseSubject}>
+                        <div class="case-info-primary">
+                            <lightning-icon icon-name="standard:case" size="x-small" class="case-icon"></lightning-icon>
+                            <span class="case-subject-wide">{caseSubject}</span>
+                        </div>
+                    </template>
+
+                    <div class="case-info-secondary">
+                        <template if:true={casePriority}>
+                            <div class="priority-badge">
+                                <lightning-icon icon-name={priorityIcon} size="xx-small" class="priority-icon"></lightning-icon>
+                                <span class="priority-text">{casePriority} Priority</span>
+                            </div>
+                        </template>
+                        <template if:true={caseNumber}>
+                            <div class="case-reference">
+                                <span class="case-number">Case {caseNumber}</span>
+                            </div>
+                        </template>
+
+                        <!-- TRINITY HEADER ENHANCEMENT: Bill Header Fields - Always Visible -->
+                        <div class="bill-info-item">
+                            <lightning-icon icon-name="standard:account" size="xx-small" class="bill-icon"></lightning-icon>
+                            <span class="bill-label">Payee:</span>
+                            <template if:true={billPayeeNameIsNull}>
+                                <span class="bill-value bill-value-null">{billPayeeName}</span>
+                            </template>
+                            <template if:false={billPayeeNameIsNull}>
+                                <span class="bill-value">{billPayeeName}</span>
+                            </template>
+                        </div>
+                        <div class="bill-info-item">
+                            <lightning-icon icon-name="standard:number_input" size="xx-small" class="bill-icon"></lightning-icon>
+                            <span class="bill-label">BCN:</span>
+                            <template if:true={billBCNNumberIsNull}>
+                                <span class="bill-value bill-value-null">{billBCNNumber}</span>
+                            </template>
+                            <template if:false={billBCNNumberIsNull}>
+                                <span class="bill-value">{billBCNNumber}</span>
+                            </template>
+                        </div>
+                        <div class="bill-info-item">
+                            <lightning-icon icon-name="standard:document" size="xx-small" class="bill-icon"></lightning-icon>
+                            <span class="bill-label">Invoice:</span>
+                            <template if:true={billInvoiceIdIsNull}>
+                                <span class="bill-value bill-value-null">{billInvoiceId}</span>
+                            </template>
+                            <template if:false={billInvoiceIdIsNull}>
+                                <span class="bill-value">{billInvoiceId}</span>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Section: Action Area -->
+                <div class="header-section-right">
+                    <div class="action-hint">
+                        <span class="click-hint">Click for details</span>
+                        <lightning-icon
+                            icon-name={toggleButtonIcon}
+                            size="medium"
+                            class="toggle-icon-wide">
+                        </lightning-icon>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expandable Content -->
+        <template if:true={isExpanded}>
+            <div class="expanded-content">
+                <template if:true={effectiveRecordId}>
+                    <c-bcn-quote-tab-container record-id={effectiveRecordId}></c-bcn-quote-tab-container>
+                </template>
+                <template if:false={effectiveRecordId}>
+                    <div class="loading-state">
+                        <lightning-spinner alternative-text="Loading..." size="small"></lightning-spinner>
+                        <span class="loading-text">Loading case information...</span>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+</template>
