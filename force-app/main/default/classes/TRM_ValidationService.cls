@@ -37,12 +37,13 @@ public with sharing class TRM_ValidationService {
 
             // Separate warnings from errors
             result.warnings = new List<ValidationFailure>();
+
+            // Separate warnings from charge level failures
             for (ValidationFailure failure : result.chargeLevelFailures) {
                 if (failure.severity == 'warning') {
                     result.warnings.add(failure);
                 }
             }
-            // Remove warnings from charge level failures
             List<ValidationFailure> chargeErrors = new List<ValidationFailure>();
             for (ValidationFailure failure : result.chargeLevelFailures) {
                 if (failure.severity == 'error') {
@@ -50,6 +51,20 @@ public with sharing class TRM_ValidationService {
                 }
             }
             result.chargeLevelFailures = chargeErrors;
+
+            // Separate warnings from line item failures
+            for (ValidationFailure failure : result.lineItemFailures) {
+                if (failure.severity == 'warning') {
+                    result.warnings.add(failure);
+                }
+            }
+            List<ValidationFailure> lineItemErrors = new List<ValidationFailure>();
+            for (ValidationFailure failure : result.lineItemFailures) {
+                if (failure.severity == 'error') {
+                    lineItemErrors.add(failure);
+                }
+            }
+            result.lineItemFailures = lineItemErrors;
 
             // TRINITY: Track passed rules for debugging
             result.passedRules = collectPassedRules(bcnCase, lineItems, result);
@@ -254,7 +269,8 @@ public with sharing class TRM_ValidationService {
      */
     private static List<ValidationFailure> validateLineItems(List<Bill_Line_Item__c> lineItems) {
         List<ValidationFailure> failures = new List<ValidationFailure>();
-        
+        List<ValidationFailure> warnings = new List<ValidationFailure>();
+
         List<String> missingDates = new List<String>();
         List<String> missingCodes = new List<String>();
         List<String> missingQuantity = new List<String>();
@@ -311,7 +327,9 @@ public with sharing class TRM_ValidationService {
                 negativeCharges.add(lineNum);
             }
 
-            // Rule 9: Payment Exceeds Charge
+            // Rule 9: Payment Exceeds Charge (WARNING - lump sum payments are legitimate)
+            // Individual line items CAN exceed their charge (e.g., Medicare lump-sum payments)
+            // Only cumulative payment vs cumulative charge is a blocker (Rule in chargeLevelValidations)
             if (item.Charge__c != null && item.Approved_Amount__c != null &&
                 item.Approved_Amount__c > item.Charge__c) {
                 paymentExceedsCharge.add(lineNum);
@@ -366,9 +384,15 @@ public with sharing class TRM_ValidationService {
                 negativeCharges, 'All charges must be positive values'));
         }
         if (!paymentExceedsCharge.isEmpty()) {
-            failures.add(createLineItemFailure('line_payment_exceeds_charge', 'Payment Exceeds Charge',
-                paymentExceedsCharge.size() + ' line item' + (paymentExceedsCharge.size() > 1 ? 's have' : ' has') + ' approved amounts exceeding charges',
-                paymentExceedsCharge, 'Approved amount cannot exceed the original charge amount'));
+            warnings.add(new ValidationFailure(
+                'line_payment_exceeds_charge',
+                'Payment Exceeds Individual Charge',
+                'warning',  // Changed from 'error' to 'warning'
+                paymentExceedsCharge.size() + ' line item' + (paymentExceedsCharge.size() > 1 ? 's have' : ' has') + ' approved amounts exceeding individual charges',
+                'Line payment exceeds individual charge. Verify this is intentional or adjust payment amount.',
+                'LINE_ITEM',
+                String.join(paymentExceedsCharge, ', ')
+            ));
         }
         if (!invalidDateRanges.isEmpty()) {
             failures.add(createLineItemFailure('line_invalid_service_date_range', 'Invalid Service Date Range',
@@ -376,6 +400,8 @@ public with sharing class TRM_ValidationService {
                 invalidDateRanges, 'Service end date must be on or after service start date'));
         }
 
+        // Combine failures and warnings
+        failures.addAll(warnings);
         return failures;
     }
 
@@ -721,9 +747,8 @@ public with sharing class TRM_ValidationService {
         if (!failedRuleIds.contains('line_negative_charge')) {
             passedRules.add(new ValidationPass('line_negative_charge', 'No Negative Charges', 'LINE_ITEM', 'All charges are positive values'));
         }
-        if (!failedRuleIds.contains('line_payment_exceeds_charge')) {
-            passedRules.add(new ValidationPass('line_payment_exceeds_charge', 'Payments Within Charge', 'LINE_ITEM', 'No line item payments exceed their charges'));
-        }
+        // REMOVED: line_payment_exceeds_charge is now a warning, not a pass/fail rule
+        // Warnings don't appear in passed rules list
         if (!failedRuleIds.contains('line_missing_account')) {
             passedRules.add(new ValidationPass('line_missing_account', 'All Accounts Present', 'LINE_ITEM', 'All line items have account assignments'));
         }
