@@ -377,6 +377,35 @@ export default class CustomBillLineItemGrid extends LightningElement {
         }
     }
 
+    /**
+     * Check if any matching duplicate has the exact same charge amount
+     * @param {Number} currentCharge - The current item's charge
+     * @param {String} matchingRecordsJson - JSON string of matching records
+     * @returns {Boolean} True if any match has exact same charge
+     */
+    hasExactChargeMatch(currentCharge, matchingRecordsJson) {
+        if (!currentCharge || !matchingRecordsJson) {
+            return false;
+        }
+
+        try {
+            const matches = JSON.parse(matchingRecordsJson);
+            if (!Array.isArray(matches)) {
+                return false;
+            }
+
+            // Check if any match has exactly the same charge amount
+            return matches.some(match => {
+                return match.chargeAmount !== null &&
+                       match.chargeAmount !== undefined &&
+                       Math.abs(match.chargeAmount - currentCharge) < 0.001; // Account for floating point precision
+            });
+        } catch (error) {
+            console.error('Error parsing matching records:', error);
+            return false;
+        }
+    }
+
     formatDate(dateValue) {
         if (!dateValue) return '';
 
@@ -577,6 +606,7 @@ export default class CustomBillLineItemGrid extends LightningElement {
             isDuplicate: false,
             duplicateStatus: 'None',
             duplicateStatusLabel: '',
+            isExactDuplicate: false,
 
             // Code descriptions for tooltips
             revenueCode: '',
@@ -815,6 +845,8 @@ export default class CustomBillLineItemGrid extends LightningElement {
             isDuplicate: item.Duplicate_Status__c && item.Duplicate_Status__c !== 'None',
             duplicateStatus: item.Duplicate_Status__c,
             duplicateStatusLabel: this.getDuplicateStatusLabel(item.Duplicate_Status__c),
+            isExactDuplicate: item.Duplicate_Status__c === 'Exact',
+            hasExactChargeMatch: this.hasExactChargeMatch(item.Charge__c, item.Matching_Records__c),
 
             // TRINITY TOOLTIP ENHANCEMENT: Code values and descriptions
             // Collapsed view shows codes, expanded view shows descriptions
@@ -1424,6 +1456,8 @@ export default class CustomBillLineItemGrid extends LightningElement {
                     isDuplicate: newItem.Duplicate_Status__c && newItem.Duplicate_Status__c !== 'None',
                     duplicateStatus: newItem.Duplicate_Status__c,
                     duplicateStatusLabel: this.getDuplicateStatusLabel(newItem.Duplicate_Status__c),
+                    isExactDuplicate: newItem.Duplicate_Status__c === 'Exact',
+                    hasExactChargeMatch: this.hasExactChargeMatch(newItem.Charge__c, newItem.Matching_Records__c),
                     revenueCode: newItem.Revenue_Code__c || '',
                     revenueCodeDescription: '',
                     revenueCodeDisplay: newItem.Revenue_Code__c || '',
@@ -2402,6 +2436,8 @@ export default class CustomBillLineItemGrid extends LightningElement {
                 isDuplicate: item.Duplicate_Status__c && item.Duplicate_Status__c !== 'None',
                 duplicateStatus: item.Duplicate_Status__c,
                 duplicateStatusLabel: this.getDuplicateStatusLabel(item.Duplicate_Status__c),
+                isExactDuplicate: item.Duplicate_Status__c === 'Exact',
+                hasExactChargeMatch: this.hasExactChargeMatch(item.Charge__c, item.Matching_Records__c),
 
                 // MVADM-188: Code values for expanded view (code-lookup-field components)
                 revenueCode: item.Revenue_Code__c || '',
