@@ -86,6 +86,9 @@ export default class CustomBillLineItemGrid extends LightningElement {
     @track isLoading = true;
     @track error = null;
 
+    // TRINITY FIX: Promise resolver for waiting on data refresh
+    _refreshResolver = null;
+
     // Simple state management - NO Maps, NO complex objects
     @track selectedIds = new Set();
     @track currentStage = 'keying'; // 'keying' or 'billReview'
@@ -673,9 +676,21 @@ export default class CustomBillLineItemGrid extends LightningElement {
             // This prevents race condition where error fires before async query completes
 
             this.error = null;
+
+            // TRINITY FIX: Resolve promise when data is refreshed
+            if (this._refreshResolver) {
+                this._refreshResolver();
+                this._refreshResolver = null;
+            }
         } else if (result.error) {
             this.error = result.error.body?.message || 'Error loading line items';
             this.lineItems = [];
+
+            // TRINITY FIX: Reject promise on error
+            if (this._refreshResolver) {
+                this._refreshResolver();
+                this._refreshResolver = null;
+            }
         }
         this.isLoading = false;
     }
@@ -2616,6 +2631,25 @@ export default class CustomBillLineItemGrid extends LightningElement {
     async handleAdjudicate() {
         this.isLoading = true;
         try {
+            // TRINITY FIX: Refresh data from server BEFORE validation
+            // This ensures Apex queries the latest saved values, not stale data
+            console.log('🔄 Refreshing grid data before validation...');
+
+            // Create a promise that resolves when wiredLineItems callback fires OR after timeout
+            const refreshPromise = new Promise(resolve => {
+                this._refreshResolver = resolve;
+                // Safety timeout: resolve after 2 seconds even if callback doesn't fire
+                setTimeout(resolve, 2000);
+            });
+
+            // Trigger the refresh
+            await refreshApex(this.wiredLineItemsResult);
+
+            // Wait for the @wire callback to process the data (or timeout)
+            await refreshPromise;
+
+            console.log('✅ Grid data refreshed - proceeding with validation');
+
             // TRINITY VALIDATION: Call comprehensive validation service
             const apexResult = await validateBCNQuoteForAdjudication({ caseId: this.recordId });
 
@@ -2689,7 +2723,17 @@ export default class CustomBillLineItemGrid extends LightningElement {
             passedRules: apexResult.passedRules || [], // TRINITY: Pass through passed rules for modal display
             totalLineItems: this.lineItems.length,
             totalCharge: this.lineItems.reduce((sum, item) => sum + (item.Charge__c || 0), 0),
-            totalApproved: this.lineItems.reduce((sum, item) => sum + (item.Approved_Amount__c || 0), 0)
+            // TRINITY: Calculate total payment matching Apex logic (TRM_ValidationService.cls lines 176-182)
+            // ⚠️ WARNING: This logic is DUPLICATED from backend - must stay in sync with Apex
+            // Fields included: Approved_Amount__c, X3rd_Party_Curr__c, Patient_Responsibility__c, Other_Ins_Paid__c
+            // RAY FEEDBACK: Fix for "View Report shows $0.00" - include ALL payment fields, not just Approved_Amount__c
+            totalApproved: this.lineItems.reduce((sum, item) => {
+                const approvedAmount = item.Approved_Amount__c || 0;
+                const thirdParty = item.X3rd_Party_Curr__c || 0;
+                const patientResp = item.Patient_Responsibility__c || 0;
+                const otherIns = item.Other_Ins_Paid__c || 0;
+                return sum + approvedAmount + thirdParty + patientResp + otherIns;
+            }, 0)
         };
     }
 
