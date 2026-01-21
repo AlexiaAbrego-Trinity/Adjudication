@@ -414,8 +414,41 @@
 .duplicate-flag-cell {
     text-align: center;
     padding: 0.5rem;
-    width: 40px;
-    min-width: 40px;
+    width: 50px;
+    min-width: 50px;
+}
+
+/* Container for duplicate icons (triangle + dollar sign) */
+.duplicate-icons-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* Force green color for exact duplicate icons - override slds-icon-text-default */
+.duplicate-icons-container .slds-icon-text-success.slds-icon-text-default {
+    --slds-c-icon-color-foreground: #2e844a !important;
+}
+
+/* Target the icon container directly */
+.duplicate-icons-container .slds-icon-text-success .slds-icon {
+    fill: #2e844a !important;
+}
+
+/* Target SVG as fallback */
+.duplicate-icons-container .slds-icon-text-success svg {
+    fill: #2e844a !important;
+}
+
+/* Dollar sign icon styling */
+.dollar-sign-icon {
+    color: #2e844a; /* Green color matching success variant */
+    font-size: 1.2rem;
+    font-weight: bold;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* TRINITY PHASE 1: Column-specific width constraints */

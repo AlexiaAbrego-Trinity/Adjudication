@@ -47,6 +47,10 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { refreshApex } from '@salesforce/apex';
 import LightningConfirm from 'lightning/confirm';
 
+// STAGE RETENTION: Import modules for reading/writing Case field
+import { getRecord, updateRecord } from 'lightning/uiRecordApi';
+import CURRENT_STAGE_FIELD from '@salesforce/schema/Case.Current_Adjudication_Stage__c';
+
 // Apex methods - TRINITY: Use correct service class
 import getBillLineItems from '@salesforce/apex/TRM_MedicalBillingService.getBillLineItems';
 import updateBillLineItems from '@salesforce/apex/TRM_MedicalBillingService.updateBillLineItems';
@@ -91,9 +95,31 @@ export default class CustomBillLineItemGrid extends LightningElement {
 
     // Simple state management - NO Maps, NO complex objects
     @track selectedIds = new Set();
-    @track currentStage = 'keying'; // 'keying' or 'billReview'
+    @track currentStage = 'keying'; // 'keying' or 'billReview' - STAGE RETENTION: Now loaded from Salesforce
     @track editingField = null;
     @track editingRowId = null;
+
+    // STAGE RETENTION: Wire adapter to read stage from Case
+    @wire(getRecord, { recordId: '$recordId', fields: [CURRENT_STAGE_FIELD] })
+    wiredCaseStage({ error, data }) {
+        if (data) {
+            const savedStage = data.fields.Current_Adjudication_Stage__c?.value;
+            if (savedStage) {
+                // Map Salesforce picklist values to component stage values
+                const stageMap = {
+                    'Keying': 'keying',
+                    'Bill Review': 'billReview',
+                    'Quote View': 'quote',
+                    'Adjudicated': 'adjudicated'
+                };
+                this.currentStage = stageMap[savedStage] || 'keying';
+                console.log(`STAGE RETENTION: Loaded stage "${savedStage}" → "${this.currentStage}" for Case ${this.recordId}`);
+            }
+        } else if (error) {
+            console.error('STAGE RETENTION: Error loading stage from Case:', error);
+            // Keep default 'keying' stage on error
+        }
+    }
 
     // MVADM-155: Draft row for manual entry
     @track draftRow = null; // Persistent blank row at bottom of grid
@@ -231,11 +257,14 @@ export default class CustomBillLineItemGrid extends LightningElement {
     };
 
     // Stage selector options
+    // STAGE RETENTION: "Adjudicated" is NOT in the list - it can only be set automatically by the system
     get stageOptions() {
         return [
             { label: 'Keying Stage', value: 'keying' },
             { label: 'Bill Review Stage', value: 'billReview' },
             { label: 'Quote View', value: 'quote' }
+            // NOTE: "Adjudicated" is excluded - users cannot manually select it
+            // It's only set automatically after successful adjudication
         ];
     }
 
@@ -301,9 +330,24 @@ export default class CustomBillLineItemGrid extends LightningElement {
     get priceColWidth() { return `width: ${this.columnWidths.price}px;`; }
     get approvedAmountColWidth() { return `width: ${this.columnWidths.approvedAmount}px;`; }
 
-    // TRINITY v2.3.0: Show Adjudicate button only in Bill Review stage
+    // STAGE RETENTION: Locking logic - Check if case is adjudicated
+    get isAdjudicated() {
+        return this.currentStage === 'adjudicated';
+    }
+
+    // STAGE RETENTION: Check if editing is allowed (not adjudicated)
+    get isEditable() {
+        return !this.isAdjudicated;
+    }
+
+    // STAGE RETENTION: Disable stage selector when adjudicated
+    get stageSelectorDisabled() {
+        return this.isAdjudicated;
+    }
+
+    // TRINITY v2.3.0: Show Adjudicate button only in Bill Review stage (and not adjudicated)
     get showAdjudicateButton() {
-        return this.currentStage === 'billReview';
+        return this.currentStage === 'billReview' && this.isEditable;
     }
 
     // TRINITY PHASE 1.6: Show View Report button after validation has been run (CHRIS'S #1 PRIORITY)
@@ -1194,8 +1238,42 @@ export default class CustomBillLineItemGrid extends LightningElement {
     }
 
     // TRINITY: Event handlers - simple and direct
-    handleStageChange(event) {
-        this.currentStage = event.detail.value;
+    // STAGE RETENTION: Save stage to Salesforce when changed
+    async handleStageChange(event) {
+        const newStage = event.detail.value;
+
+        // Update local state immediately for responsive UI
+        this.currentStage = newStage;
+
+        // Map component stage values to Salesforce picklist values
+        const stageMap = {
+            'keying': 'Keying',
+            'billReview': 'Bill Review',
+            'quote': 'Quote View',
+            'adjudicated': 'Adjudicated'
+        };
+
+        const salesforceStageValue = stageMap[newStage];
+
+        if (!salesforceStageValue) {
+            console.error('STAGE RETENTION: Invalid stage value:', newStage);
+            return;
+        }
+
+        // Save to Salesforce
+        try {
+            const fields = {};
+            fields['Id'] = this.recordId;
+            fields[CURRENT_STAGE_FIELD.fieldApiName] = salesforceStageValue;
+
+            const recordInput = { fields };
+            await updateRecord(recordInput);
+
+            console.log(`STAGE RETENTION: Saved stage "${salesforceStageValue}" for Case ${this.recordId}`);
+        } catch (error) {
+            console.error('STAGE RETENTION: Error saving stage to Salesforce:', error);
+            this.showToast('Error', 'Failed to save stage: ' + (error.body?.message || error.message), 'error');
+        }
     }
 
     handleSelectAll(event) {
@@ -2772,13 +2850,31 @@ export default class CustomBillLineItemGrid extends LightningElement {
             // Refresh the grid to show the updated status
             await refreshApex(this.wiredLineItemsResult);
 
+            // STAGE RETENTION: Auto-lock case by setting stage to "Adjudicated"
+            try {
+                const fields = {};
+                fields['Id'] = this.recordId;
+                fields[CURRENT_STAGE_FIELD.fieldApiName] = 'Adjudicated';
+
+                const recordInput = { fields };
+                await updateRecord(recordInput);
+
+                // Update local state to reflect locked status
+                this.currentStage = 'adjudicated';
+
+                console.log(`STAGE RETENTION: Case ${this.recordId} locked - stage set to "Adjudicated"`);
+            } catch (stageError) {
+                console.error('STAGE RETENTION: Error setting adjudicated stage:', stageError);
+                // Don't fail the whole adjudication if stage update fails
+            }
+
             // Close modal
             this.showValidationModal = false;
 
             // Show success message
             this.dispatchEvent(new ShowToastEvent({
                 title: 'Success',
-                message: 'Adjudication validation passed - ready to proceed',
+                message: 'Adjudication completed successfully - case is now locked',
                 variant: 'success'
             }));
 
