@@ -20,15 +20,25 @@ public with sharing class TRM_ValidationService {
     public static ValidationResult validateBCNQuoteForAdjudication(Id caseId) {
         ValidationResult result = new ValidationResult();
         result.caseId = caseId;
-        
+
         try {
+            // 🔍 DEBUG: Log start of validation
+            System.debug('🔍 ========== VALIDATION START ==========');
+            System.debug('🔍 caseId: ' + caseId);
+
             // Get Case data
             Case bcnCase = getCaseData(caseId);
             result.caseNumber = bcnCase.CaseNumber;
-            
+
             // Get line items
             List<Bill_Line_Item__c> lineItems = TRM_MedicalBillingService.getBillLineItems(caseId);
-            
+
+            // 🔍 DEBUG: Log retrieved data
+            System.debug('🔍 Retrieved lineItems.size(): ' + lineItems.size());
+            if (!lineItems.isEmpty()) {
+                System.debug('🔍 First line item: ' + lineItems[0]);
+            }
+
             // Run all validation categories
             result.bcnLevelFailures = validateBCNLevel(bcnCase, lineItems);
             result.chargeLevelFailures = validateCharges(bcnCase, lineItems);
@@ -169,9 +179,15 @@ public with sharing class TRM_ValidationService {
         Decimal cumulativePayment = 0.0;
         Map<Id, Decimal> accountPayments = new Map<Id, Decimal>();
 
+        // 🔍 DEBUG: Log initial values
+        System.debug('🔍 validateCharges START - Total_Claim_charge__c: ' + bcnCase.Total_Claim_charge__c);
+        System.debug('🔍 validateCharges START - totalClaimCharge (after safeDecimal): ' + totalClaimCharge);
+        System.debug('🔍 validateCharges START - lineItems.size(): ' + lineItems.size());
+
         // Calculate cumulative charges and payments
         for (Bill_Line_Item__c item : lineItems) {
-            cumulativeCharge += safeDecimal(item.Charge__c);
+            Decimal itemCharge = safeDecimal(item.Charge__c);
+            cumulativeCharge += itemCharge;
 
             Decimal itemPayment = 0.0;
             itemPayment += safeDecimal(item.Approved_Amount__c);
@@ -181,6 +197,9 @@ public with sharing class TRM_ValidationService {
             itemPayment += safeDecimal(item.Other_Ins_Paid__c);
             cumulativePayment += itemPayment;
 
+            // 🔍 DEBUG: Log each line item
+            System.debug('🔍 Line Item ID: ' + item.Id + ' - Charge: ' + itemCharge + ', Payment: ' + itemPayment);
+
             // Track payments by account
             if (item.Account__c != null) {
                 if (!accountPayments.containsKey(item.Account__c)) {
@@ -189,6 +208,10 @@ public with sharing class TRM_ValidationService {
                 accountPayments.put(item.Account__c, accountPayments.get(item.Account__c) + itemPayment);
             }
         }
+
+        // 🔍 DEBUG: Log calculated totals
+        System.debug('🔍 validateCharges CALCULATED - cumulativeCharge: ' + cumulativeCharge);
+        System.debug('🔍 validateCharges CALCULATED - cumulativePayment: ' + cumulativePayment);
 
         // TRINITY FIX: If Total_Claim_charge__c is NULL/0, use calculated cumulativeCharge as the reference
         // This handles cases where the Bill record doesn't have Total_Claim_charge__c populated
@@ -228,29 +251,44 @@ public with sharing class TRM_ValidationService {
             ));
         }
         
-        // Rule 3: Account-specific payments ≤ Account accrued balance (WARNING only)
+        // Rule 3: Account-specific payments ≤ Account accrued balance (HARD BLOCK)
+        // RAY FEEDBACK: Changed from WARNING to ERROR - must block adjudication when balance exceeded
+        // TRINITY: This validates PER-ACCOUNT to ensure we can't pay more than available in each Member Account
         if (!accountPayments.isEmpty()) {
+            // 🔍 DEBUG: Log account payments breakdown
+            System.debug('🔍 Account Payments Map - Number of accounts: ' + accountPayments.size());
+            for (Id accountId : accountPayments.keySet()) {
+                System.debug('🔍 Account ID: ' + accountId + ' - Total Payment: ' + accountPayments.get(accountId));
+            }
+
             Map<Id, Member_Account__c> accounts = new Map<Id, Member_Account__c>([
                 SELECT Id, Name, BalanceAccrued__c
                 FROM Member_Account__c
                 WHERE Id IN :accountPayments.keySet()
             ]);
-            
+
             for (Id accountId : accountPayments.keySet()) {
                 Member_Account__c account = accounts.get(accountId);
                 if (account != null) {
                     Decimal accountPayment = accountPayments.get(accountId);
                     Decimal accruedBalance = safeDecimal(account.BalanceAccrued__c);
-                    
+
+                    // 🔍 DEBUG: Log comparison for each account
+                    System.debug('🔍 Account: ' + account.Name + ' - Payment: ' + accountPayment + ', Balance: ' + accruedBalance);
+
                     if (accountPayment > accruedBalance) {
                         Decimal shortfall = accountPayment - accruedBalance;
+
+                        // 🔍 DEBUG: Log validation failure
+                        System.debug('🔍 VALIDATION FAILURE - Account ' + account.Name + ' has shortfall: ' + shortfall);
+
                         failures.add(new ValidationFailure(
                             'account_payment_exceeds_balance',
                             'Account Balance Check',
-                            'warning', // WARNING, not error
-                            String.format('Payments from {0} (${1}) exceed accrued balance (${2})', 
+                            'error', // ✅ HARD BLOCK - Cannot adjudicate with insufficient funds (RAY FEEDBACK)
+                            String.format('Payments from {0} (${1}) exceed accrued balance (${2})',
                                 new List<String>{account.Name, formatCurrency(accountPayment), formatCurrency(accruedBalance)}),
-                            String.format('Shortfall: ${0}. Reallocate payments or verify account balance.', 
+                            String.format('Shortfall: ${0}. Reallocate payments or verify account balance.',
                                 new List<String>{formatCurrency(shortfall)}),
                             'CHARGE_LEVEL'
                         ));
@@ -653,8 +691,34 @@ public with sharing class TRM_ValidationService {
                 return '0.00';
             }
 
-            // Convert to Double for String.format() - this is required by Apex
-            return String.format('{0,number,#,##0.00}', new List<Double>{decimalAmount.doubleValue()});
+            // Format with 2 decimal places and add thousands separators
+            // Use setScale to ensure 2 decimal places
+            decimalAmount = decimalAmount.setScale(2);
+
+            // Convert to string and add thousands separators manually
+            String result = String.valueOf(decimalAmount);
+
+            // Split into integer and decimal parts
+            List<String> parts = result.split('\\.');
+            String integerPart = parts[0];
+            String decimalPart = parts.size() > 1 ? parts[1] : '00';
+
+            // Ensure decimal part has exactly 2 digits
+            if (decimalPart.length() == 1) {
+                decimalPart += '0';
+            }
+
+            // Add thousands separators to integer part
+            String formattedInteger = '';
+            Integer len = integerPart.length();
+            for (Integer i = 0; i < len; i++) {
+                if (i > 0 && Math.mod(len - i, 3) == 0) {
+                    formattedInteger += ',';
+                }
+                formattedInteger += integerPart.substring(i, i + 1);
+            }
+
+            return formattedInteger + '.' + decimalPart;
 
         } catch (Exception e) {
             // Defensive fallback - log error and return safe default
