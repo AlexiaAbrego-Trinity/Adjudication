@@ -51,6 +51,9 @@ import LightningConfirm from 'lightning/confirm';
 import { getRecord, updateRecord } from 'lightning/uiRecordApi';
 import CURRENT_STAGE_FIELD from '@salesforce/schema/Case.Current_Adjudication_Stage__c';
 
+// AUTO DUPLICATE CHECK: Import Apex method for automatic duplicate detection
+import triggerBillDuplicateCheck from '@salesforce/apex/TRM_DuplicateDetectionApi.triggerBillDuplicateCheck';
+
 // Apex methods - TRINITY: Use correct service class
 import getBillLineItems from '@salesforce/apex/TRM_MedicalBillingService.getBillLineItems';
 import updateBillLineItems from '@salesforce/apex/TRM_MedicalBillingService.updateBillLineItems';
@@ -1241,6 +1244,7 @@ export default class CustomBillLineItemGrid extends LightningElement {
     // STAGE RETENTION: Save stage to Salesforce when changed
     async handleStageChange(event) {
         const newStage = event.detail.value;
+        const oldStage = this.currentStage; // AUTO DUPLICATE CHECK: Capture old stage before changing
 
         // Update local state immediately for responsive UI
         this.currentStage = newStage;
@@ -1270,10 +1274,86 @@ export default class CustomBillLineItemGrid extends LightningElement {
             await updateRecord(recordInput);
 
             console.log(`STAGE RETENTION: Saved stage "${salesforceStageValue}" for Case ${this.recordId}`);
+
+            // AUTO DUPLICATE CHECK: Run when transitioning Keying → Bill Review
+            if (oldStage === 'keying' && newStage === 'billReview') {
+                console.log('AUTO DUPLICATE CHECK: Detected Keying → Bill Review transition');
+                await this.runAutomaticDuplicateCheck();
+            }
+
         } catch (error) {
             console.error('STAGE RETENTION: Error saving stage to Salesforce:', error);
             this.showToast('Error', 'Failed to save stage: ' + (error.body?.message || error.message), 'error');
         }
+    }
+
+    /**
+     * AUTO DUPLICATE CHECK: Run duplicate detection automatically when changing to Bill Review
+     * Requested by Ray Marden to eliminate manual steps
+     *
+     * This method:
+     * 1. Shows "Running duplicate check..." toast
+     * 2. Gets Bill ID from line items
+     * 3. Calls TRM_DuplicateDetectionApi.triggerBillDuplicateCheck()
+     * 4. Refreshes grid to show duplicate triangles
+     * 5. Shows success toast with results
+     *
+     * Error handling: Errors are logged but not shown to user (automatic process)
+     */
+    async runAutomaticDuplicateCheck() {
+        // Get Bill ID from line items
+        const billId = this.getBillIdFromLineItems();
+
+        if (!billId) {
+            console.warn('AUTO DUPLICATE CHECK: No Bill ID found, skipping duplicate check');
+            return;
+        }
+
+        try {
+            console.log('AUTO DUPLICATE CHECK: Starting duplicate check for Bill:', billId);
+
+            // Show "Running..." toast to inform user
+            this.showToast('Info',
+                'Checking for duplicates...',
+                'info');
+
+            // Call Apex method (same as manual "Check All Duplicates" button)
+            const result = await triggerBillDuplicateCheck({ billId: billId });
+
+            // Refresh line items to show duplicate triangles
+            await refreshApex(this.wiredLineItemsResult);
+
+            console.log('AUTO DUPLICATE CHECK: Completed -', result);
+
+            // Show success toast with friendly message
+            this.showToast('Success',
+                'Duplicate check complete. Please review any warnings (⚠️) before adjudicating.',
+                'success');
+
+        } catch (error) {
+            console.error('AUTO DUPLICATE CHECK: Error running duplicate check:', error);
+
+            // Don't show error to user - it's an automatic background process
+            // User can still run manual check if needed
+            console.warn('AUTO DUPLICATE CHECK: Failed, but user can run manual check');
+        }
+    }
+
+    /**
+     * AUTO DUPLICATE CHECK: Helper to get Bill ID from line items
+     *
+     * All line items in the grid belong to the same Bill (filtered by Case),
+     * so we can get the Bill ID from the first line item.
+     *
+     * @return {Id|null} Bill ID or null if no line items
+     */
+    getBillIdFromLineItems() {
+        if (!this.lineItems || this.lineItems.length === 0) {
+            return null;
+        }
+
+        // All line items belong to same Bill, so get from first item
+        return this.lineItems[0].Bill__c;
     }
 
     handleSelectAll(event) {
