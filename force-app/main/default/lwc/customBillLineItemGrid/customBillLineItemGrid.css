@@ -853,3 +853,67 @@ th:has([data-column="description"]) {
 /* ========================================
    END TRINITY v2.4.3: FOOTER TOTALS
    ======================================== */
+
+/* ========================================
+   RAY FEEDBACK #9: ADJUDICATION OVERLAY
+   ======================================== */
+
+/* Overlay that covers the entire grid during adjudication */
+.adjudication-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999; /* Above everything else */
+}
+
+/* Container for spinner and message */
+.adjudication-spinner-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0; /* No gap - we'll use margin instead */
+    background: white;
+    padding: 2.5rem 4rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+    border: 3px solid #0176d3; /* Salesforce blue */
+}
+
+/* Wrapper for spinner to control its size */
+.spinner-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem; /* Space between spinner and text */
+}
+
+/* Message text below spinner */
+.adjudication-message {
+    font-size: 1.25rem; /* Even larger text */
+    font-weight: 700; /* Bold */
+    color: #0176d3; /* Salesforce blue */
+    text-align: center;
+    letter-spacing: 0.025em;
+    line-height: 1.5;
+    min-height: 1.875rem; /* Reserve space for text */
+}
+
+/* Position the spinner at 25% from top */
+.slds-spinner {
+    top: 25%;
+}
+
+/* Make grid-container position relative so overlay is positioned correctly */
+.grid-container {
+    position: relative;
+}
+
+/* ========================================
+   END RAY FEEDBACK #9: ADJUDICATION OVERLAY
+   ======================================== */

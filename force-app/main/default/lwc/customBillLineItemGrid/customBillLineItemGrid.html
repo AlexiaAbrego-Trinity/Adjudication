@@ -52,12 +52,14 @@
                 </template>
 
                 <!-- TRINITY v2.3.2: Adjudicate button (Bill Review stage only) -->
+                <!-- RAY FEEDBACK #9: Disabled during processing to prevent double-clicks -->
                 <template if:true={showAdjudicateButton}>
                     <lightning-button
                         label="Adjudicate"
                         onclick={handleAdjudicate}
                         variant="brand"
                         icon-name="utility:check"
+                        disabled={isAdjudicating}
                         title="Run validation and adjudicate this case">
                     </lightning-button>
                 </template>
@@ -123,6 +125,19 @@
             <template if:false={error}>
                 <template if:true={showGrid}>
                     <div class="grid-container">
+
+                    <!-- RAY FEEDBACK #9: Overlay spinner during adjudication -->
+                    <template if:true={isAdjudicating}>
+                        <div class="adjudication-overlay">
+                            <div class="adjudication-spinner-container">
+                                <div class="spinner-wrapper">
+                                    <lightning-spinner alternative-text={adjudicationMessage} size="medium"></lightning-spinner>
+                                </div>
+                                <div class="adjudication-message">{adjudicationMessage}</div>
+                            </div>
+                        </div>
+                    </template>
+
                     <!-- TRINITY: Horizontal scroll wrapper for professional grid navigation -->
                     <div class="grid-scroll-wrapper">
                         <table class="slds-table slds-table_cell-buffer slds-table_bordered custom-grid-table">

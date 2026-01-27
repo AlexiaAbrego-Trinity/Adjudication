@@ -141,6 +141,8 @@ export default class CustomBillLineItemGrid extends LightningElement {
     @track showValidationModal = false;
     @track validationResult = null;
     @track isProcessingAdjudication = false; // TRINITY: Processing state for adjudication
+    @track isAdjudicating = false; // RAY FEEDBACK #9: Processing state for auto-adjudication
+    @track adjudicationMessage = ''; // RAY FEEDBACK #9: Message to show during adjudication
 
     // Expandable column states - SIMPLE booleans
     @track serviceDatesExpanded = false;
@@ -2786,65 +2788,81 @@ export default class CustomBillLineItemGrid extends LightningElement {
     }
 
     // TRINITY v2.3.0: Validation and Adjudication handlers
+    // RAY FEEDBACK #9: Enhanced with auto-proceed when validation passes
     async handleAdjudicate() {
-        this.isLoading = true;
+        // RAY FEEDBACK #9: Prevent double-clicks during processing
+        if (this.isAdjudicating) {
+            return;
+        }
+
+        this.isAdjudicating = true;
+        this.adjudicationMessage = 'Validating BCN/Quote Adjudication...'; // RAY FEEDBACK #9: Show overlay message
+
         try {
-            // TRINITY FIX: Refresh data from server BEFORE validation
-            // This ensures Apex queries the latest saved values, not stale data
-            console.log('🔄 Refreshing grid data before validation...');
+            // RAY FEEDBACK #9: Use overlay spinner - grid stays visible underneath
+            // NO refresh until the very end to preserve grid visibility
 
-            // Create a promise that resolves when wiredLineItems callback fires OR after timeout
-            const refreshPromise = new Promise(resolve => {
-                this._refreshResolver = resolve;
-                // Safety timeout: resolve after 2 seconds even if callback doesn't fire
-                setTimeout(resolve, 2000);
-            });
-
-            // Trigger the refresh
-            await refreshApex(this.wiredLineItemsResult);
-
-            // Wait for the @wire callback to process the data (or timeout)
-            await refreshPromise;
-
-            console.log('✅ Grid data refreshed - proceeding with validation');
+            console.log('🔄 Starting validation...');
 
             // TRINITY VALIDATION: Call comprehensive validation service
             const apexResult = await validateBCNQuoteForAdjudication({ caseId: this.recordId });
 
             // Transform Apex result to UI format
-            this.validationResult = this.transformValidationResult(apexResult);
+            const result = this.transformValidationResult(apexResult);
 
             // TRINITY PHASE 1.6: Apply validation status to rows (CHRIS'S #1 PRIORITY)
-            this.applyValidationToRows(this.validationResult);
+            this.applyValidationToRows(result);
 
-            // TRINITY FIX: Don't auto-launch modal - just show success message
-            // User must click "View Report" button to see validation details
-            const failureCount = (this.validationResult.redLineFailures?.length || 0);
-            const warningCount = (this.validationResult.yellowLineWarnings?.length || 0);
+            // RAY FEEDBACK #9: Check if validation passed - auto-proceed if no errors
+            if (result.canProceed) {
+                // TRINITY: All validations passed - proceed automatically
 
-            if (failureCount === 0 && warningCount === 0) {
-                this.dispatchEvent(new ShowToastEvent({
-                    title: 'Validation Complete',
-                    message: 'All validation rules passed. Ready to proceed with adjudication.',
-                    variant: 'success'
-                }));
+                // Update message for adjudication phase
+                this.adjudicationMessage = 'Processing adjudication...';
+
+                // Execute adjudication (has its own try/catch and success toast)
+                await this.handleProceedWithAdjudication();
+
+                // Note: Success toast already shown by handleProceedWithAdjudication()
+
             } else {
+                // Has errors or warnings - show validation report modal
+                this.validationResult = result;
+                this.showValidationModal = true;
+
+                // Inform user to review issues
+                const errorCount = result.redLineFailures?.length || 0;
+                const warningCount = result.yellowLineWarnings?.length || 0;
+
                 this.dispatchEvent(new ShowToastEvent({
-                    title: 'Validation Complete',
-                    message: `Found ${failureCount} error(s) and ${warningCount} warning(s). Click "View Report" to see details.`,
-                    variant: failureCount > 0 ? 'error' : 'warning'
+                    title: 'Warning',
+                    message: `Found ${errorCount} error(s) and ${warningCount} warning(s). Please review.`,
+                    variant: 'warning'
                 }));
             }
 
         } catch (error) {
-            console.error('Validation error:', error);
+            // Show detailed error message
+            console.error('Error during adjudication:', error);
             this.dispatchEvent(new ShowToastEvent({
-                title: 'Validation Error',
-                message: 'Failed to validate BCN Quote: ' + (error.body?.message || error.message),
+                title: 'Error',
+                message: 'Adjudication failed: ' + (error.body?.message || error.message || 'Unknown error'),
                 variant: 'error'
             }));
         } finally {
-            this.isLoading = false;
+            // RAY FEEDBACK #9: Hide overlay first
+            this.isAdjudicating = false;
+            this.adjudicationMessage = '';
+
+            // RAY FEEDBACK #9: Refresh grid AFTER overlay disappears
+            // This way user sees: overlay → overlay disappears → grid refreshes
+            try {
+                await refreshApex(this.wiredLineItemsResult);
+                console.log('✅ Grid refreshed after adjudication');
+            } catch (refreshError) {
+                console.error('Error refreshing grid:', refreshError);
+                // Don't show error to user - adjudication already succeeded
+            }
         }
     }
 
