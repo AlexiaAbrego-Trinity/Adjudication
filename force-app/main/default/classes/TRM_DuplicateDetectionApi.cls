@@ -520,14 +520,52 @@ public with sharing class TRM_DuplicateDetectionApi {
                 SELECT Id, Name, Duplicate_Status__c, Matching_Records__c,
                        Charge__c, Service_Start_Date__c, Service_End_Date__c,
                        CPT_HCPCS_NDC__c, CreatedDate, CreatedBy.Name,
-                       Bill__r.Id, Bill__r.External_Id__c, Bill__r.Patient_Id__c,
-                       Bill__r.Bill_Case_Data__r.Id, Bill__r.Bill_Case_Data__r.CaseNumber
+                       Bill__r.Id, Bill__r.External_Id__c, Bill__r.Patient_Id__c
+                       // COMMENTED OUT: Field may not exist or may cause SOQL errors
+                       // Bill__r.Bill_Case_Data__r.Id, Bill__r.Bill_Case_Data__r.CaseNumber
                 FROM Bill_Line_Item__c
                 WHERE Bill__c = :caseRecord.BCN__c
                 AND Duplicate_Status__c IN ('Exact', 'Potential')
                 WITH SECURITY_ENFORCED
                 LIMIT 200
             ];
+
+            // Collect all duplicate Bill Line Item IDs to query their Cases
+            Set<Id> duplicateLineItemIds = new Set<Id>();
+            for (Bill_Line_Item__c lineItem : lineItems) {
+                if (String.isBlank(lineItem.Matching_Records__c)) {
+                    continue;
+                }
+                try {
+                    List<TRM_DuplicateDetectionModels.MatchDTO> matches =
+                        (List<TRM_DuplicateDetectionModels.MatchDTO>)
+                        JSON.deserialize(lineItem.Matching_Records__c,
+                            List<TRM_DuplicateDetectionModels.MatchDTO>.class);
+                    for (TRM_DuplicateDetectionModels.MatchDTO match : matches) {
+                        if (match.recordId != null) {
+                            duplicateLineItemIds.add(match.recordId);
+                        }
+                    }
+                } catch (Exception e) {
+                    // Skip invalid JSON
+                }
+            }
+
+            // Query duplicate Bill Line Items with their Case information
+            Map<Id, Id> lineItemToCaseMap = new Map<Id, Id>();
+            if (!duplicateLineItemIds.isEmpty()) {
+                List<Bill_Line_Item__c> duplicateLineItems = [
+                    SELECT Id, Bill__r.Bill_Case_Data__c
+                    FROM Bill_Line_Item__c
+                    WHERE Id IN :duplicateLineItemIds
+                    WITH SECURITY_ENFORCED
+                ];
+                for (Bill_Line_Item__c dupItem : duplicateLineItems) {
+                    if (dupItem.Bill__r.Bill_Case_Data__c != null) {
+                        lineItemToCaseMap.put(dupItem.Id, dupItem.Bill__r.Bill_Case_Data__c);
+                    }
+                }
+            }
 
             // Process each line item's matching records (filter in Apex for Long Text Area field)
             for (Bill_Line_Item__c lineItem : lineItems) {
@@ -562,8 +600,14 @@ public with sharing class TRM_DuplicateDetectionApi {
                         caseMatch.createdDate = match.createdDate;
                         caseMatch.createdBy = match.createdBy;
 
-                        // Set Case information for navigation
-                        caseMatch.caseId = caseRecord.Id;
+                        // Set Case information for navigation - use the duplicate's Case, not the original
+                        Id duplicateCaseId = lineItemToCaseMap.get(match.recordId);
+                        if (duplicateCaseId != null) {
+                            caseMatch.caseId = duplicateCaseId;
+                        } else {
+                            // Fallback to original case if duplicate's case not found
+                            caseMatch.caseId = caseRecord.Id;
+                        }
                         caseMatch.caseNumber = caseRecord.CaseNumber;
 
                         // Calculate derived display properties

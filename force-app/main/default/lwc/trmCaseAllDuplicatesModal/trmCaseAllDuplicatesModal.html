@@ -62,13 +62,6 @@
                                         onclick={handleClearFilters}
                                         variant="neutral">
                                     </lightning-button>
-                                    <lightning-button
-                                        label="Export CSV"
-                                        icon-name="utility:download"
-                                        onclick={handleExportCSV}
-                                        variant="neutral"
-                                        disabled={isLoading}>
-                                    </lightning-button>
                                 </lightning-button-group>
                             </div>
                         </div>
@@ -197,7 +190,7 @@
                                                                             onclick={handleNavigateToLineItem}
                                                                             class="record-link">
                                                                         </lightning-button>
-                                                                        <lightning-badge 
+                                                                        <lightning-badge
                                                                             label={match.matchTypeLabel}
                                                                             class="slds-m-left_x-small match-type-badge">
                                                                         </lightning-badge>
@@ -246,16 +239,15 @@
 
                                                         <!-- Actions -->
                                                         <div class="slds-col slds-size_1-of-4 slds-text-align_right">
-                                                            <template if:true={match.caseId}>
-                                                                <lightning-button
-                                                                    label="View Case"
-                                                                    variant="neutral"
-                                                                    size="small"
-                                                                    data-case-id={match.caseId}
-                                                                    onclick={handleNavigateToCase}
-                                                                    class="slds-m-bottom_x-small">
-                                                                </lightning-button>
-                                                            </template>
+                                                            <!-- RAY FEEDBACK #1: Navigate to Case instead of Line Item -->
+                                                            <lightning-button
+                                                                label="View Case"
+                                                                variant="neutral"
+                                                                size="small"
+                                                                data-case-id={match.caseId}
+                                                                onclick={handleNavigateToCase}
+                                                                class="slds-m-bottom_x-small">
+                                                            </lightning-button>
                                                         </div>
                                                     </div>
                                                 </div>

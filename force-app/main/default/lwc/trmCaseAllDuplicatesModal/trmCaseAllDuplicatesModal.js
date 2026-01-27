@@ -16,30 +16,35 @@ export default class TrmCaseAllDuplicatesModal extends NavigationMixin(Lightning
     @api isOpen = false;
     @api caseId;
     @api caseSummary;
-    
+
     // Component state
     @track allMatches = [];
     @track filteredMatches = [];
     @track isLoading = false;
     @track error = null;
-    
+
     // Filtering and sorting state
     @track selectedMatchType = 'All';
     @track searchTerm = '';
     @track sortField = 'confidence';
     @track sortDirection = 'desc';
     @track groupByMatchType = true;
-    
+
     // Modal state
     @track showFilters = false;
-    
+
     /**
      * @description Wire all duplicate matches for the Case
      */
     @wire(getCaseAllDuplicateMatches, { caseId: '$caseId' })
     wiredMatches({ error, data }) {
+        console.log('TrmCaseAllDuplicatesModal: wiredMatches called');
+        console.log('TrmCaseAllDuplicatesModal: this.caseId =', this.caseId);
+        console.log('TrmCaseAllDuplicatesModal: data =', data);
+        console.log('TrmCaseAllDuplicatesModal: error =', error);
+
         this.isLoading = true;
-        
+
         if (data) {
             this.allMatches = data;
             this.error = null;
@@ -50,7 +55,7 @@ export default class TrmCaseAllDuplicatesModal extends NavigationMixin(Lightning
             this.filteredMatches = [];
             console.error('TrmCaseAllDuplicatesModal: Error loading matches', error);
         }
-        
+
         this.isLoading = false;
     }
     
@@ -230,24 +235,29 @@ export default class TrmCaseAllDuplicatesModal extends NavigationMixin(Lightning
     
     /**
      * @description Handle navigate to Case
+     * Uses GenerateUrl + window.open to avoid frame navigation security errors
      */
     handleNavigateToCase(event) {
         const caseId = event.currentTarget.dataset.caseId;
-        
+
         if (caseId) {
-            this[NavigationMixin.Navigate]({
+            // Generate URL first, then open in same window to avoid security errors
+            this[NavigationMixin.GenerateUrl]({
                 type: 'standard__recordPage',
                 attributes: {
                     recordId: caseId,
                     objectApiName: 'Case',
                     actionName: 'view'
                 }
+            }).then(url => {
+                // Use window.location.href to navigate in same window
+                window.location.href = url;
             });
         }
     }
-    
+
     /**
-     * @description Handle navigate to Bill Line Item
+     * @description Handle navigate to Bill Line Item (duplicate record)
      */
     handleNavigateToLineItem(event) {
         const recordId = event.currentTarget.dataset.recordId;
