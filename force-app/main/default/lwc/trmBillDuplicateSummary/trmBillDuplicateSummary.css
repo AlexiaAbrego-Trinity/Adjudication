@@ -271,7 +271,7 @@
     position: fixed;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -30%);
 }
 
 .slds-modal__container {
@@ -296,6 +296,8 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    padding-top: 0;
+    padding-bottom: 0;
 }
 
 .slds-modal__content {
@@ -347,6 +349,15 @@
     border-radius: 12px 12px 0 0;
     padding: 1.5rem;
     flex-shrink: 0;
+}
+
+/* Close Button Positioning */
+.slds-modal__close {
+    top: 0 !important;
+}
+
+.slds-button_icon-inverse {
+    top: 0 !important;
 }
 
 /* SLICK Modal Footer */
