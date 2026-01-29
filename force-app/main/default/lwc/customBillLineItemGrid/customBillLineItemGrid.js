@@ -275,7 +275,8 @@ export default class CustomBillLineItemGrid extends LightningElement {
 
     // Computed properties
     get showAdjudicationColumns() {
-        return this.currentStage === 'billReview';
+        // RAY FEEDBACK #12: Show Bill Review columns when adjudicated (locked view)
+        return this.currentStage === 'billReview' || this.currentStage === 'adjudicated';
     }
 
     // TRINITY v2.5.0: Quote view visibility
@@ -593,6 +594,7 @@ export default class CustomBillLineItemGrid extends LightningElement {
 
     // MVADM-155: Initialize draft row for manual entry
     // TRINITY: Match EXACT structure of real rows from processLineItems (lines 306-378)
+    // RAY FEEDBACK #7: Quantity auto-populated to 1 when CPT/HCPCS/NDC code is entered
     initializeDraftRow() {
         this.draftRow = {
             Id: 'draft-row-temp', // CRITICAL: Unique temp ID to avoid conflicts with 18-char Salesforce IDs
@@ -612,7 +614,7 @@ export default class CustomBillLineItemGrid extends LightningElement {
             Place_of_Service__c: '',
             CPT_HCPCS_NDC__c: '',
             Modifier__c: '',
-            Quantity__c: null,
+            Quantity__c: null, // RAY FEEDBACK #7: Auto-populated to 1 when CPT code is entered
             Charge__c: null,
             //TRM_BCN_Custom_Status__c: '',
             Description__c: '',
@@ -951,11 +953,16 @@ export default class CustomBillLineItemGrid extends LightningElement {
             this.lineItems.map(i => ({id: i.Id, name: i.Name, paid: i.Approved_Amount__c})));
 
         // MVADM-155: Append draft row at bottom of grid for manual entry
-        if (!this.draftRow) {
-            this.initializeDraftRow();
+        // RAY FEEDBACK #12: Do NOT show draft row when case is adjudicated (locked)
+        if (!this.isAdjudicated) {
+            if (!this.draftRow) {
+                this.initializeDraftRow();
+            }
+            this.lineItems = [...this.lineItems, this.draftRow];
+            console.log('TRINITY DEBUG: Added draft row, total items:', this.lineItems.length);
+        } else {
+            console.log('RAY FEEDBACK #12: Draft row hidden - case is adjudicated');
         }
-        this.lineItems = [...this.lineItems, this.draftRow];
-        console.log('TRINITY DEBUG: Added draft row, total items:', this.lineItems.length);
 
         // TRINITY: Batch fetch code descriptions for tooltip display
         this.enrichCodeDescriptions();
@@ -1314,10 +1321,10 @@ export default class CustomBillLineItemGrid extends LightningElement {
         try {
             console.log('AUTO DUPLICATE CHECK: Starting duplicate check for Bill:', billId);
 
-            // Show "Running..." toast to inform user
-            this.showToast('Info',
-                'Checking for duplicates...',
-                'info');
+            // RAY FEEDBACK #6: Don't show "Checking for duplicates..." toast - runs silently in background
+            // this.showToast('Info',
+            //     'Checking for duplicates...',
+            //     'info');
 
             // Call Apex method (same as manual "Check All Duplicates" button)
             const result = await triggerBillDuplicateCheck({ billId: billId });
@@ -1327,7 +1334,7 @@ export default class CustomBillLineItemGrid extends LightningElement {
 
             console.log('AUTO DUPLICATE CHECK: Completed -', result);
 
-            // Show success toast with friendly message
+            // Show success toast with friendly message (keep the green one)
             this.showToast('Success',
                 'Duplicate check complete. Please review any warnings (⚠️) before adjudicating.',
                 'success');
@@ -1389,6 +1396,33 @@ export default class CustomBillLineItemGrid extends LightningElement {
         this.lineItems = this.lineItems.map(item => ({
             ...item,
             selected: item.Id === rowId ? isChecked : item.selected
+        }));
+    }
+
+    // RAY FEEDBACK V2: Handle line item click to open reference overlay
+    handleLineItemClick(event) {
+        // Prevent opening overlay when clicking on interactive elements
+        const tagName = event.target.tagName.toLowerCase();
+        if (tagName === 'input' || tagName === 'button' || tagName === 'lightning-input' ||
+            tagName === 'lightning-button' || tagName === 'lightning-button-icon') {
+            return;
+        }
+
+        const itemId = event.currentTarget.dataset.itemId;
+
+        // Don't open overlay for draft row
+        if (itemId === 'draft-row-temp') {
+            return;
+        }
+
+        // Dispatch event to parent (bcnQuoteTabContainer) to open overlay
+        this.dispatchEvent(new CustomEvent('lineitemclick', {
+            detail: {
+                lineItemId: itemId,
+                tab: 'accounts'  // Default tab to show - can be changed based on context
+            },
+            bubbles: true,
+            composed: true
         }));
     }
 
@@ -1497,13 +1531,12 @@ export default class CustomBillLineItemGrid extends LightningElement {
 
     // MVADM-155: Handle field changes in draft row (manual entry)
     // TRINITY AUTO-REGEN: Create new draft row immediately when current draft is saved
+    // RAY FEEDBACK #5: Only update field values, save on blur instead of on change
     async handleDraftFieldChange(event) {
         const fieldName = event.target.dataset.field;
         let newValue = event.target.value;
 
         console.log('TRINITY DEBUG: Draft field changed:', fieldName, '=', newValue);
-
-        // TRINITY: X3rd_Party_Curr__c is Currency field, no conversion needed
 
         // CRITICAL: Update BOTH draftRow object AND lineItems array for display
         this.draftRow = { ...this.draftRow, [fieldName]: newValue };
@@ -1532,160 +1565,159 @@ export default class CustomBillLineItemGrid extends LightningElement {
             return item;
         });
 
-        // MVADM-155: Check if ANY meaningful field has data (trigger save on first entry)
-        // CRITICAL: Check ALL fields to ensure code selections trigger save
-        // TRINITY v3.1.0: Added Account__c to trigger save when account is selected
-        const hasAnyData = this.draftRow.Service_Start_Date__c ||
-                          this.draftRow.Service_End_Date__c ||
-                          this.draftRow.Revenue_Code__c ||
-                          this.draftRow.CPT_HCPCS_NDC__c ||
-                          this.draftRow.Place_of_Service__c ||
-                          this.draftRow.Modifier__c ||
-                          this.draftRow.Charge__c ||
-                          this.draftRow.Quantity__c ||
-                          this.draftRow.Description__c ||
-                          this.draftRow.Account__c ||
-                          this.draftRow.Remark_Code_1__c ||
-                          this.draftRow.Remark_Code_2__c ||
-                          this.draftRow.Remark_Code_3__c ||
-                          this.draftRow.Remark_Code_4__c ||
-                          this.draftRow.Approved_Amount__c ||
-                          this.draftRow.Paid_Amount__c ||
-                          this.draftRow.X3rd_Party_Curr__c ||
-                          this.draftRow.Deductible__c ||
-                          this.draftRow.Copay__c ||
-                          this.draftRow.Coinsurance__c;
+        // RAY FEEDBACK #5: Do NOT save here - wait for blur event
+        // This allows the user to Tab naturally from Start Date → End Date without cursor jumping
+        console.log('TRINITY DEBUG: Draft field updated, waiting for blur to save...');
+    }
 
-        // TRINITY AUTO-REGEN: If draft has data and is still a draft, save it and create new draft immediately
-        if (hasAnyData && this.draftRow.isDraft) {
-            console.log('TRINITY DEBUG: Draft row has data, creating new line item...');
+    // RAY FEEDBACK #5: Save draft row and create new draft (called from handleFieldBlur)
+    async saveDraftRow() {
+        console.log('RAY FEEDBACK #5: Saving draft row...');
 
-            // CRITICAL: Ensure we have Bill__c ID
-            if (!this.billId) {
-                this.showToast('Error', 'Bill ID not available. Cannot create line item.', 'error');
-                return;
+        // RAY FEEDBACK #5: Prevent duplicate saves - check if already saving
+        if (this.draftRow.isSaving) {
+            console.log('RAY FEEDBACK #5: Draft row already saving, skipping duplicate save');
+            return;
+        }
+
+        // CRITICAL: Ensure we have Bill__c ID
+        if (!this.billId) {
+            this.showToast('Error', 'Bill ID not available. Cannot create line item.', 'error');
+            return;
+        }
+
+        // STEP 1: Capture current draft data for save
+        const savingRowData = { ...this.draftRow };
+        console.log('TRINITY DEBUG: Captured draft data:', JSON.stringify(savingRowData, null, 2));
+
+        // RAY FEEDBACK #5: Mark draft row as "saving" but keep it in the DOM
+        // This prevents the fields from disappearing and losing focus
+        this.draftRow = { ...this.draftRow, isSaving: true };
+        this.lineItems = this.lineItems.map(item => {
+            if (item.Id === 'draft-row-temp') {
+                return { ...item, isSaving: true };
             }
+            return item;
+        });
 
-            // STEP 1: Capture current draft data for save (BEFORE creating new draft)
-            const savingRowData = { ...this.draftRow };
-            console.log('TRINITY DEBUG: Captured draft data:', JSON.stringify(savingRowData, null, 2));
+        console.log('RAY FEEDBACK #5: Marked draft row as saving, keeping it in DOM');
 
-            // STEP 2: Create new EMPTY draft row IMMEDIATELY (user can start typing right away)
-            this.initializeDraftRow();
+        // STEP 4: Save in background
+        try {
+            const newItem = await createBillLineItem({
+                billId: this.billId,
+                draftItem: savingRowData
+            });
 
-            // STEP 3: Remove old draft from lineItems, add "saving" placeholder, append new EMPTY draft
-            this.lineItems = this.lineItems.filter(item => item.Id !== 'draft-row-temp');
+            console.log('TRINITY DEBUG: Successfully created line item:', newItem.Id);
+            console.log('TRINITY DEBUG: Line number assigned:', newItem.Bill_Line_Item_Number__c);
 
-            // Add "saving" placeholder with captured data
-            this.lineItems = [...this.lineItems, {
-                ...savingRowData,
-                Id: 'saving-row-temp',
-                isDraft: false,
-                lineNumber: '' // Will be populated when save completes
-            }];
+            // STEP 5: Process new item with line number from Apex
+            const processedItem = {
+                ...newItem,
+                selected: false,
+                lineNumber: newItem.Bill_Line_Item_Number__c || '',
+                accountName: newItem.Bill__r?.Member_Account__r?.Name || '',
+                formattedStartDate: this.formatDate(newItem.Service_Start_Date__c),
+                formattedEndDate: this.formatDate(newItem.Service_End_Date__c),
+                formattedCharge: this.formatCurrency(newItem.Charge__c),
+                formattedOIAllow: this.formatCurrency(newItem.Other_Ins_Allowed__c),
+                formattedOIPaid: this.formatCurrency(newItem.Other_Ins_Paid__c),
+                formattedPaid: this.formatCurrency(newItem.Approved_Amount__c),
+                formattedThirdParty: this.formatCurrency(newItem.X3rd_Party_Curr__c),
+                formattedPatResp: this.formatCurrency(newItem.Patient_Responsibility__c),
+                medicareStatus: newItem.Code__r?.Medicare_Covered__c || 'TBD',
+                medicareStatusValue: newItem.Code__r?.Medicare_Covered__c || 'TBD',
+                medicareStatusYes: newItem.Code__r?.Medicare_Covered__c === 'Yes',
+                medicareStatusNo: newItem.Code__r?.Medicare_Covered__c === 'No',
+                medicareStatusReview: newItem.Code__r?.Medicare_Covered__c === 'Review',
+                medicareStatusTBD: newItem.Code__r?.Medicare_Covered__c === 'TBD' || !newItem.Code__r?.Medicare_Covered__c,
+                medicareStatusDiscretion: newItem.Code__r?.Medicare_Covered__c === 'Discretion',
+                medicareStatusTooltip: this.getMedicareTooltip(newItem.Code__r?.Medicare_Covered__c),
+                isDuplicate: newItem.Duplicate_Status__c && newItem.Duplicate_Status__c !== 'None',
+                duplicateStatus: newItem.Duplicate_Status__c,
+                duplicateStatusLabel: this.getDuplicateStatusLabel(newItem.Duplicate_Status__c),
+                isExactDuplicate: newItem.Duplicate_Status__c === 'Exact',
+                hasExactChargeMatch: this.hasExactChargeMatch(newItem.Charge__c, newItem.Matching_Records__c),
+                revenueCode: newItem.Revenue_Code__c || '',
+                revenueCodeDescription: '',
+                revenueCodeDisplay: newItem.Revenue_Code__c || '',
+                posCode: newItem.Place_of_Service__c || '',
+                posCodeDescription: '',
+                posDisplay: newItem.Place_of_Service__c || '',
+                cptCode: newItem.CPT_HCPCS_NDC__c || '',
+                cptCodeDescription: newItem.Code__r?.Description__c || '',
+                cptDisplay: newItem.CPT_HCPCS_NDC__c || '',
+                modifierCode: newItem.Modifier__c || '',
+                modifierCodeDescription: '',
+                modifierDisplay: newItem.Modifier__c || '',
+                remarkCode1Display: newItem.Remark_Code_1__c || '',
+                remarkCode2Display: newItem.Remark_Code_2__c || '',
+                remarkCode3Display: newItem.Remark_Code_3__c || '',
+                remarkCode4Display: newItem.Remark_Code_4__c || '',
+                codesDescriptionTooltip: '',
+                validationStatus: 'valid',
+                validationErrors: [],
+                validationWarnings: [],
+                rowClass: 'grid-row row-valid'
+            };
 
-            // STEP 3.5: CRITICAL - Clear the input field value and remove focus
-            // Clear value to prevent duplication in new draft row
-            // Remove focus to prevent browser from jumping to new draft row during re-render
-            if (event.target) {
-                event.target.value = '';
-                event.target.blur(); // Remove focus before re-render
-            }
+            // RAY FEEDBACK #5: Replace draft row with saved row, then create new draft
+            this.lineItems = this.lineItems.map(item => {
+                if (item.Id === 'draft-row-temp') {
+                    return processedItem;
+                }
+                return item;
+            });
 
-            // Append new EMPTY draft row (this.draftRow is now empty from initializeDraftRow)
-            this.lineItems = [...this.lineItems, this.draftRow];
-            console.log('TRINITY DEBUG: Created new EMPTY draft row, total items:', this.lineItems.length);
+            console.log('RAY FEEDBACK #5: Replaced draft row with saved row. Line number:', processedItem.lineNumber);
 
-            // STEP 4: Save in background (async - user can continue typing)
-            try {
-                const newItem = await createBillLineItem({
-                    billId: this.billId,
-                    draftItem: savingRowData
-                });
+            // STEP 7: Enrich code descriptions for newly created item
+            await this.enrichSingleItemDescriptions(processedItem);
 
-                console.log('TRINITY DEBUG: Successfully created line item:', newItem.Id);
-                console.log('TRINITY DEBUG: Line number assigned:', newItem.Bill_Line_Item_Number__c);
+            // RAY FEEDBACK #5: Set focus on End Date field of the saved row
+            // Use setTimeout to ensure DOM is updated before trying to focus
+            setTimeout(() => {
+                const endDateField = this.template.querySelector(`[data-field="Service_End_Date__c"][data-row-id="${processedItem.Id}"]`);
+                if (endDateField) {
+                    endDateField.focus();
+                    console.log('RAY FEEDBACK #5: Set focus on End Date of saved row:', processedItem.Id);
+                } else {
+                    console.log('RAY FEEDBACK #5: Could not find End Date field for row:', processedItem.Id);
+                }
+            }, 100);
 
-                // STEP 5: Process new item with line number from Apex
-                const processedItem = {
-                    ...newItem,
-                    selected: false,
-                    lineNumber: newItem.Bill_Line_Item_Number__c || '',
-                    accountName: newItem.Bill__r?.Member_Account__r?.Name || '',
-                    formattedStartDate: this.formatDate(newItem.Service_Start_Date__c),
-                    formattedEndDate: this.formatDate(newItem.Service_End_Date__c),
-                    formattedCharge: this.formatCurrency(newItem.Charge__c),
-                    formattedOIAllow: this.formatCurrency(newItem.Other_Ins_Allowed__c),
-                    formattedOIPaid: this.formatCurrency(newItem.Other_Ins_Paid__c),
-                    formattedPaid: this.formatCurrency(newItem.Approved_Amount__c),
-                    formattedThirdParty: this.formatCurrency(newItem.X3rd_Party_Curr__c),
-                    formattedPatResp: this.formatCurrency(newItem.Patient_Responsibility__c),
-                    medicareStatus: newItem.Code__r?.Medicare_Covered__c || 'TBD',
-                    medicareStatusValue: newItem.Code__r?.Medicare_Covered__c || 'TBD',
-                    medicareStatusYes: newItem.Code__r?.Medicare_Covered__c === 'Yes',
-                    medicareStatusNo: newItem.Code__r?.Medicare_Covered__c === 'No',
-                    medicareStatusReview: newItem.Code__r?.Medicare_Covered__c === 'Review',
-                    medicareStatusTBD: newItem.Code__r?.Medicare_Covered__c === 'TBD' || !newItem.Code__r?.Medicare_Covered__c,
-                    medicareStatusDiscretion: newItem.Code__r?.Medicare_Covered__c === 'Discretion',
-                    medicareStatusTooltip: this.getMedicareTooltip(newItem.Code__r?.Medicare_Covered__c),
-                    isDuplicate: newItem.Duplicate_Status__c && newItem.Duplicate_Status__c !== 'None',
-                    duplicateStatus: newItem.Duplicate_Status__c,
-                    duplicateStatusLabel: this.getDuplicateStatusLabel(newItem.Duplicate_Status__c),
-                    isExactDuplicate: newItem.Duplicate_Status__c === 'Exact',
-                    hasExactChargeMatch: this.hasExactChargeMatch(newItem.Charge__c, newItem.Matching_Records__c),
-                    revenueCode: newItem.Revenue_Code__c || '',
-                    revenueCodeDescription: '',
-                    revenueCodeDisplay: newItem.Revenue_Code__c || '',
-                    posCode: newItem.Place_of_Service__c || '',
-                    posCodeDescription: '',
-                    posDisplay: newItem.Place_of_Service__c || '',
-                    cptCode: newItem.CPT_HCPCS_NDC__c || '',
-                    cptCodeDescription: newItem.Code__r?.Description__c || '',
-                    cptDisplay: newItem.CPT_HCPCS_NDC__c || '',
-                    modifierCode: newItem.Modifier__c || '',
-                    modifierCodeDescription: '',
-                    modifierDisplay: newItem.Modifier__c || '',
-                    remarkCode1Display: newItem.Remark_Code_1__c || '',
-                    remarkCode2Display: newItem.Remark_Code_2__c || '',
-                    remarkCode3Display: newItem.Remark_Code_3__c || '',
-                    remarkCode4Display: newItem.Remark_Code_4__c || '',
-                    codesDescriptionTooltip: '',
-                    validationStatus: 'valid',
-                    validationErrors: [],
-                    validationWarnings: [],
-                    rowClass: 'grid-row row-valid'
-                };
-
-                // STEP 6: Replace "saving-row-temp" with real row (line number now visible!)
-                this.lineItems = this.lineItems.map(item => {
-                    if (item.Id === 'saving-row-temp') {
-                        return processedItem;
-                    }
-                    return item;
-                });
-
-                console.log('TRINITY DEBUG: Replaced saving row with real row. Line number:', processedItem.lineNumber);
-
-                // STEP 7: Enrich code descriptions for newly created item
-                await this.enrichSingleItemDescriptions(processedItem);
-
-                // Show success toast with line number
-                this.showToast('Success', `Line item ${processedItem.lineNumber} created`, 'success');
-
-            } catch (error) {
-                console.error('TRINITY ERROR: Failed to create line item:', error);
-
-                // ROLLBACK: Remove new draft, restore saving row as draft
-                this.lineItems = this.lineItems.filter(item => item.Id !== 'draft-row-temp');
-                this.draftRow = {
-                    ...savingRowData,
-                    Id: 'draft-row-temp',
-                    isDraft: true
-                };
+            // RAY FEEDBACK #5: Create new draft row after a delay (to avoid stealing focus)
+            setTimeout(() => {
+                this.initializeDraftRow();
                 this.lineItems = [...this.lineItems, this.draftRow];
+                console.log('RAY FEEDBACK #5: Created new draft row after save completed');
+            }, 200);
 
-                this.showToast('Error', 'Failed to create line item: ' + (error.body?.message || error.message), 'error');
-            }
+            // RAY FEEDBACK #6: Don't show success toast when creating line items during keying
+            // this.showToast('Success', `Line item ${processedItem.lineNumber} created`, 'success');
+            console.log(`RAY FEEDBACK #6: Line item ${processedItem.lineNumber} created (toast suppressed during keying)`);
+
+        } catch (error) {
+            console.error('TRINITY ERROR: Failed to create line item:', error);
+
+            // RAY FEEDBACK #5: ROLLBACK - Restore draft row with original data
+            this.draftRow = {
+                ...savingRowData,
+                Id: 'draft-row-temp',
+                isDraft: true,
+                isSaving: false
+            };
+            this.lineItems = this.lineItems.map(item => {
+                if (item.Id === 'draft-row-temp') {
+                    return this.draftRow;
+                }
+                return item;
+            });
+
+            console.log('RAY FEEDBACK #5: Rolled back to draft row after save error');
+
+            this.showToast('Error', 'Failed to create line item: ' + (error.body?.message || error.message), 'error');
         }
     }
 
@@ -2085,8 +2117,9 @@ export default class CustomBillLineItemGrid extends LightningElement {
                 this.processLineItems(this.wiredLineItemsResult.data);
             }
 
-            this.showToast('Success', `Updated ${rowsToUpdate.length} row(s)`, 'success');
-            console.log(`✅ Successfully updated ${rowsToUpdate.length} rows and refreshed grid`);
+            // RAY FEEDBACK #6: Don't show success toast when updating rows during keying
+            // this.showToast('Success', `Updated ${rowsToUpdate.length} row(s)`, 'success');
+            console.log(`✅ Successfully updated ${rowsToUpdate.length} rows and refreshed grid (toast suppressed per Ray's feedback)`);
 
         } catch (error) {
             console.error('❌ Error updating rows:', error);
@@ -2245,6 +2278,10 @@ export default class CustomBillLineItemGrid extends LightningElement {
                     if (description) {
                         updates.Description__c = description;
                     }
+                    // RAY FEEDBACK #7: Auto-populate Quantity to 1 when CPT/HCPCS/NDC code is entered
+                    if (!item.Quantity__c || item.Quantity__c === null) {
+                        updates.Quantity__c = 1;
+                    }
                 } else if (fieldName === 'Place_of_Service__c') {
                     updates.posCode = codeName;
                     updates.posCodeDescription = description || '';
@@ -2269,35 +2306,50 @@ export default class CustomBillLineItemGrid extends LightningElement {
             this.draftRow = { ...this.draftRow, [fieldName]: codeName };
             if (fieldName === 'CPT_HCPCS_NDC__c' && description) {
                 this.draftRow = { ...this.draftRow, Description__c: description };
+                // RAY FEEDBACK #7: Auto-populate Quantity to 1 when CPT/HCPCS/NDC code is entered
+                if (!this.draftRow.Quantity__c || this.draftRow.Quantity__c === null) {
+                    this.draftRow = { ...this.draftRow, Quantity__c: 1 };
+                }
             }
 
-            // Show success message (no save needed)
-            this.dispatchEvent(new ShowToastEvent({
-                title: 'Code Selected',
-                message: `${fieldName.replace('__c', '').replace('_', ' ')}: ${codeName}${description ? ' - ' + description : ''}`,
-                variant: 'success'
-            }));
+            // RAY FEEDBACK #6: Don't show success toast when selecting codes during keying
+            // this.dispatchEvent(new ShowToastEvent({
+            //     title: 'Code Selected',
+            //     message: `${fieldName.replace('__c', '').replace('_', ' ')}: ${codeName}${description ? ' - ' + description : ''}`,
+            //     variant: 'success'
+            // }));
+            console.log(`RAY FEEDBACK #6: Code selected in draft row: ${fieldName} = ${codeName} (toast suppressed)`);
             return;
         }
 
         // MVADM-109: Save code field AND Description__c field if CPT/HCPCS/NDC code was selected
+        // RAY FEEDBACK #7: Also save Quantity__c = 1 if it's empty when CPT code is entered
         if (fieldName === 'CPT_HCPCS_NDC__c' && description) {
-            // Save both fields in parallel
-            await Promise.all([
+            // Find the current item to check Quantity__c
+            const currentItem = this.lineItems.find(item => item.Id === rowId);
+            const savePromises = [
                 this.autoSaveField(rowId, fieldName, codeName),
                 this.autoSaveField(rowId, 'Description__c', description)
-            ]);
+            ];
+
+            // RAY FEEDBACK #7: If Quantity is empty, save it as 1
+            if (currentItem && (!currentItem.Quantity__c || currentItem.Quantity__c === null)) {
+                savePromises.push(this.autoSaveField(rowId, 'Quantity__c', 1));
+            }
+
+            await Promise.all(savePromises);
         } else {
             // Save ONLY the code field to database
             await this.autoSaveField(rowId, fieldName, codeName);
         }
 
-        // Show success message
-        this.dispatchEvent(new ShowToastEvent({
-            title: 'Code Selected',
-            message: `${fieldName.replace('__c', '').replace('_', ' ')}: ${codeName}${description ? ' - ' + description : ''}`,
-            variant: 'success'
-        }));
+        // RAY FEEDBACK #6: Don't show success toast when selecting codes during keying
+        // this.dispatchEvent(new ShowToastEvent({
+        //     title: 'Code Selected',
+        //     message: `${fieldName.replace('__c', '').replace('_', ' ')}: ${codeName}${description ? ' - ' + description : ''}`,
+        //     variant: 'success'
+        // }));
+        console.log(`RAY FEEDBACK #6: Code selected: ${fieldName} = ${codeName} (toast suppressed)`);
     }
 
     // TRINITY PHASE 2: Show Alt+Click bulk assignment modal
@@ -2514,13 +2566,42 @@ export default class CustomBillLineItemGrid extends LightningElement {
 
         console.log('Auto-saving field on blur:', fieldName, 'for row:', rowId, 'value:', newValue);
 
-        // MVADM-155 CRITICAL FIX: Skip auto-save for draft row (handled by handleDraftFieldChange)
+        // RAY FEEDBACK #5: Handle draft row save on blur instead of on change
         if (rowId === 'draft-row-temp') {
-            console.log('TRINITY DEBUG: Skipping blur auto-save for draft row');
+            console.log('RAY FEEDBACK #5: Draft row blur detected, checking if should save...');
+
+            // Check if draft has any data
+            const hasAnyData = this.draftRow.Service_Start_Date__c ||
+                              this.draftRow.Service_End_Date__c ||
+                              this.draftRow.Revenue_Code__c ||
+                              this.draftRow.CPT_HCPCS_NDC__c ||
+                              this.draftRow.Place_of_Service__c ||
+                              this.draftRow.Modifier__c ||
+                              this.draftRow.Charge__c ||
+                              this.draftRow.Quantity__c ||
+                              this.draftRow.Description__c ||
+                              this.draftRow.Account__c ||
+                              this.draftRow.Remark_Code_1__c ||
+                              this.draftRow.Remark_Code_2__c ||
+                              this.draftRow.Remark_Code_3__c ||
+                              this.draftRow.Remark_Code_4__c ||
+                              this.draftRow.Approved_Amount__c ||
+                              this.draftRow.Paid_Amount__c ||
+                              this.draftRow.X3rd_Party_Curr__c ||
+                              this.draftRow.Deductible__c ||
+                              this.draftRow.Copay__c ||
+                              this.draftRow.Coinsurance__c;
+
+            if (hasAnyData && this.draftRow.isDraft) {
+                console.log('RAY FEEDBACK #5: Draft has data, saving and creating new draft...');
+                await this.saveDraftRow();
+            } else {
+                console.log('RAY FEEDBACK #5: Draft has no data, skipping save');
+            }
             return;
         }
 
-        // Use the centralized auto-save helper
+        // Use the centralized auto-save helper for non-draft rows
         await this.autoSaveField(rowId, fieldName, newValue);
     }
 
@@ -2959,6 +3040,16 @@ export default class CustomBillLineItemGrid extends LightningElement {
 
                 // Update local state to reflect locked status
                 this.currentStage = 'adjudicated';
+
+                // RAY FEEDBACK #12: After adjudication, show Bill Review view (not Quote view)
+                // Note: showQuoteView getter returns false when currentStage !== 'quote'
+                // This ensures the grid displays in Bill Review mode after adjudication
+                console.log('RAY FEEDBACK #12: Switching to Bill Review view after adjudication');
+
+                // RAY FEEDBACK #12: Remove draft row from lineItems array when adjudicated
+                // This is more efficient than re-processing all items and preserves column widths
+                this.lineItems = this.lineItems.filter(item => item.Id !== 'draft-row-temp');
+                console.log('RAY FEEDBACK #12: Removed draft row - case is now locked');
 
                 console.log(`STAGE RETENTION: Case ${this.recordId} locked - stage set to "Adjudicated"`);
             } catch (stageError) {

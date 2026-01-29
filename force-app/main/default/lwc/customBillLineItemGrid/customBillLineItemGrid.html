@@ -199,14 +199,15 @@
                             <tr class="slds-line-height_reset">
                                 <!-- TRINITY v2.5.0: Keying/Bill Review headers (existing functionality) -->
                                 <template if:false={showQuoteView}>
-                                    <!-- Selection column -->
+                                    <!-- Selection column - RAY FEEDBACK #12: Disable when adjudicated -->
                                     <th class="slds-text-align_center selection-column" scope="col">
                                         <lightning-input
                                             type="checkbox"
                                             checked={allSelected}
                                             onchange={handleSelectAll}
                                             variant="label-hidden"
-                                            aria-label="Select All">
+                                            aria-label="Select All"
+                                            disabled={isAdjudicated}>
                                         </lightning-input>
                                     </th>
 
@@ -433,14 +434,15 @@
 
                                 <!-- TRINITY v2.5.0: Quote View headers (simplified 6-column layout) -->
                                 <template if:true={showQuoteView}>
-                                    <!-- Selection column -->
+                                    <!-- Selection column - RAY FEEDBACK #12: Disable when adjudicated -->
                                     <th class="slds-text-align_center selection-column" scope="col">
                                         <lightning-input
                                             type="checkbox"
                                             checked={allSelected}
                                             onchange={handleSelectAll}
                                             variant="label-hidden"
-                                            aria-label="Select All">
+                                            aria-label="Select All"
+                                            disabled={isAdjudicated}>
                                         </lightning-input>
                                     </th>
 
@@ -502,10 +504,10 @@
                         </thead>
                         <tbody>
                             <template for:each={lineItems} for:item="item">
-                                <tr key={item.Id} class={item.rowClass}>
+                                <tr key={item.Id} class={item.rowClass} onclick={handleLineItemClick} data-item-id={item.Id} style="cursor: pointer;">
                                     <!-- TRINITY v2.5.0: Keying/Bill Review rows (existing functionality) -->
                                     <template if:false={showQuoteView}>
-                                        <!-- Selection checkbox -->
+                                        <!-- Selection checkbox - RAY FEEDBACK #12: Disable when adjudicated -->
                                         <td class="slds-text-align_center">
                                             <lightning-input
                                                 type="checkbox"
@@ -513,7 +515,8 @@
                                                 onchange={handleRowSelect}
                                                 data-row-id={item.Id}
                                                 variant="label-hidden"
-                                                aria-label="Select Row">
+                                                aria-label="Select Row"
+                                                disabled={isAdjudicated}>
                                             </lightning-input>
                                         </td>
 
@@ -584,7 +587,8 @@
                                                 onkeydown={handleKeyDown}
                                                 data-field="Service_Start_Date__c"
                                                 data-row-id={item.Id}
-                                                placeholder="MM/DD/YYYY">
+                                                placeholder="MM/DD/YYYY"
+                                                disabled={isAdjudicated}>
                                         </td>
                                         <td>
                                             <!-- TRINITY v2.7.3: Use formatted date to prevent timezone shift -->
@@ -597,7 +601,8 @@
                                                 onkeydown={handleKeyDown}
                                                 data-field="Service_End_Date__c"
                                                 data-row-id={item.Id}
-                                                placeholder="MM/DD/YYYY">
+                                                placeholder="MM/DD/YYYY"
+                                                disabled={isAdjudicated}>
                                         </td>
                                     </template>
 
@@ -643,7 +648,8 @@
                                                 placeholder={LOOKUP_FIELD_CONFIG.Revenue_Code__c.placeholder}
                                                 allow-custom-entry={LOOKUP_FIELD_CONFIG.Revenue_Code__c.allowCustomEntry}
                                                 data-row-id={item.Id}
-                                                oncodeselected={handleCodeSelected}>
+                                                oncodeselected={handleCodeSelected}
+                                                disabled={isAdjudicated}>
                                             </c-code-lookup-field>
                                         </td>
                                         <td>
@@ -656,7 +662,8 @@
                                                 placeholder={LOOKUP_FIELD_CONFIG.Place_of_Service__c.placeholder}
                                                 allow-custom-entry={LOOKUP_FIELD_CONFIG.Place_of_Service__c.allowCustomEntry}
                                                 data-row-id={item.Id}
-                                                oncodeselected={handleCodeSelected}>
+                                                oncodeselected={handleCodeSelected}
+                                                disabled={isAdjudicated}>
                                             </c-code-lookup-field>
                                         </td>
                                         <td>
@@ -669,7 +676,8 @@
                                                 placeholder={LOOKUP_FIELD_CONFIG.CPT_HCPCS_NDC__c.placeholder}
                                                 allow-custom-entry={LOOKUP_FIELD_CONFIG.CPT_HCPCS_NDC__c.allowCustomEntry}
                                                 data-row-id={item.Id}
-                                                oncodeselected={handleCodeSelected}>
+                                                oncodeselected={handleCodeSelected}
+                                                disabled={isAdjudicated}>
                                             </c-code-lookup-field>
                                         </td>
                                         <td>
@@ -682,7 +690,8 @@
                                                 onkeydown={handleKeyDown}
                                                 data-field="Modifier__c"
                                                 data-row-id={item.Id}
-                                                variant="label-hidden">
+                                                variant="label-hidden"
+                                                disabled={isAdjudicated}>
                                             </lightning-input>
                                         </td>
                                     </template>
@@ -698,7 +707,8 @@
                                             onkeydown={handleKeyDown}
                                             data-field="Quantity__c"
                                             data-row-id={item.Id}
-                                            variant="label-hidden">
+                                            variant="label-hidden"
+                                            disabled={isAdjudicated}>
                                         </lightning-input>
                                     </td>
 
@@ -711,7 +721,8 @@
                                             onkeydown={handleKeyDown}
                                             data-field="Description__c"
                                             data-row-id={item.Id}
-                                            variant="label-hidden">
+                                            variant="label-hidden"
+                                            disabled={isAdjudicated}>
                                         </lightning-input>
                                     </td>
                                     <td>
@@ -725,7 +736,8 @@
                                             onkeydown={handleKeyDown}
                                             data-field="Charge__c"
                                             data-row-id={item.Id}
-                                            variant="label-hidden">
+                                            variant="label-hidden"
+                                            disabled={isAdjudicated}>
                                         </lightning-input>
                                     </td>
                                     
@@ -743,7 +755,8 @@
                                                 onkeydown={handleKeyDown}
                                                 data-field="Other_Ins_Allowed__c"
                                                 data-row-id={item.Id}
-                                                variant="label-hidden">
+                                                variant="label-hidden"
+                                                disabled={isAdjudicated}>
                                             </lightning-input>
                                         </td>
                                         <td>
@@ -757,7 +770,8 @@
                                                 onkeydown={handleKeyDown}
                                                 data-field="Other_Ins_Paid__c"
                                                 data-row-id={item.Id}
-                                                variant="label-hidden">
+                                                variant="label-hidden"
+                                                disabled={isAdjudicated}>
                                             </lightning-input>
                                         </td>
                                         <td>
@@ -773,7 +787,8 @@
                                                     onkeydown={handleKeyDown}
                                                     data-field="Approved_Amount__c"
                                                     data-row-id={item.Id}
-                                                    variant="label-hidden">
+                                                    variant="label-hidden"
+                                                    disabled={isAdjudicated}>
                                                 </lightning-input>
                                             </div>
                                         </td>
@@ -790,7 +805,8 @@
                                                     onkeydown={handleKeyDown}
                                                     data-field="X3rd_Party_Curr__c"
                                                     data-row-id={item.Id}
-                                                    variant="label-hidden">
+                                                    variant="label-hidden"
+                                                    disabled={isAdjudicated}>
                                                 </lightning-input>
                                             </div>
                                         </td>
@@ -807,7 +823,8 @@
                                                     onkeydown={handleKeyDown}
                                                     data-field="Patient_Responsibility__c"
                                                     data-row-id={item.Id}
-                                                    variant="label-hidden">
+                                                    variant="label-hidden"
+                                                    disabled={isAdjudicated}>
                                                 </lightning-input>
                                             </div>
                                         </td>
@@ -846,7 +863,8 @@
                                                         placeholder={LOOKUP_FIELD_CONFIG.Remark_Code_1__c.placeholder}
                                                         allow-custom-entry={LOOKUP_FIELD_CONFIG.Remark_Code_1__c.allowCustomEntry}
                                                         data-row-id={item.Id}
-                                                        oncodeselected={handleCodeSelected}>
+                                                        oncodeselected={handleCodeSelected}
+                                                        disabled={isAdjudicated}>
                                                     </c-code-lookup-field>
                                                 </div>
                                             </td>
@@ -860,7 +878,8 @@
                                                         placeholder={LOOKUP_FIELD_CONFIG.Remark_Code_2__c.placeholder}
                                                         allow-custom-entry={LOOKUP_FIELD_CONFIG.Remark_Code_2__c.allowCustomEntry}
                                                         data-row-id={item.Id}
-                                                        oncodeselected={handleCodeSelected}>
+                                                        oncodeselected={handleCodeSelected}
+                                                        disabled={isAdjudicated}>
                                                     </c-code-lookup-field>
                                                 </div>
                                             </td>
@@ -874,7 +893,8 @@
                                                         placeholder={LOOKUP_FIELD_CONFIG.Remark_Code_3__c.placeholder}
                                                         allow-custom-entry={LOOKUP_FIELD_CONFIG.Remark_Code_3__c.allowCustomEntry}
                                                         data-row-id={item.Id}
-                                                        oncodeselected={handleCodeSelected}>
+                                                        oncodeselected={handleCodeSelected}
+                                                        disabled={isAdjudicated}>
                                                     </c-code-lookup-field>
                                                 </div>
                                             </td>
@@ -888,7 +908,8 @@
                                                         placeholder={LOOKUP_FIELD_CONFIG.Remark_Code_4__c.placeholder}
                                                         allow-custom-entry={LOOKUP_FIELD_CONFIG.Remark_Code_4__c.allowCustomEntry}
                                                         data-row-id={item.Id}
-                                                        oncodeselected={handleCodeSelected}>
+                                                        oncodeselected={handleCodeSelected}
+                                                        disabled={isAdjudicated}>
                                                     </c-code-lookup-field>
                                                 </div>
                                             </td>
@@ -907,7 +928,8 @@
                                                 data-field="Account__c"
                                                 data-row-id={item.Id}
                                                 variant="label-hidden"
-                                                class="grid-combobox">
+                                                class="grid-combobox"
+                                                disabled={isAdjudicated}>
                                             </lightning-combobox>
                                         </td>
                                         <td class="medicare-status-cell">
@@ -941,7 +963,7 @@
 
                                     <!-- TRINITY v2.5.0: Quote View rows (simplified 6-column layout) -->
                                     <template if:true={showQuoteView}>
-                                        <!-- Selection checkbox -->
+                                        <!-- Selection checkbox - RAY FEEDBACK #12: Disable when adjudicated -->
                                         <td class="slds-text-align_center">
                                             <lightning-input
                                                 type="checkbox"
@@ -949,7 +971,8 @@
                                                 onchange={handleRowSelect}
                                                 data-row-id={item.Id}
                                                 variant="label-hidden"
-                                                aria-label="Select Row">
+                                                aria-label="Select Row"
+                                                disabled={isAdjudicated}>
                                             </lightning-input>
                                         </td>
 
@@ -968,7 +991,8 @@
                                                 onkeydown={handleKeyDown}
                                                 data-field="Description__c"
                                                 data-row-id={item.Id}
-                                                variant="label-hidden">
+                                                variant="label-hidden"
+                                                disabled={isAdjudicated}>
                                             </lightning-input>
                                         </td>
 
@@ -983,7 +1007,8 @@
                                                 onkeydown={handleKeyDown}
                                                 data-field="Quantity__c"
                                                 data-row-id={item.Id}
-                                                variant="label-hidden">
+                                                variant="label-hidden"
+                                                disabled={isAdjudicated}>
                                             </lightning-input>
                                         </td>
 
@@ -1013,7 +1038,8 @@
                                                 onkeydown={handleKeyDown}
                                                 data-field="Charge__c"
                                                 data-row-id={item.Id}
-                                                variant="label-hidden">
+                                                variant="label-hidden"
+                                                disabled={isAdjudicated}>
                                             </lightning-input>
                                         </td>
 
@@ -1029,7 +1055,8 @@
                                                 onkeydown={handleKeyDown}
                                                 data-field="Approved_Amount__c"
                                                 data-row-id={item.Id}
-                                                variant="label-hidden">
+                                                variant="label-hidden"
+                                                disabled={isAdjudicated}>
                                             </lightning-input>
                                         </td>
                                     </template>
