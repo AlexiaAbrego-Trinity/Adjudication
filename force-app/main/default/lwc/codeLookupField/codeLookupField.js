@@ -19,6 +19,7 @@ export default class CodeLookupField extends LightningElement {
     @api codeTypes = [];
     @api placeholder = 'Search codes...';
     @api allowCustomEntry = false;
+    @api disabled = false; // RAY FEEDBACK #12: Support disabled state
 
     // Internal state
     @track searchTerm = '';

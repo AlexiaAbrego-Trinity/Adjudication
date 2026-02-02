@@ -4,7 +4,7 @@
         <!-- Simple text input showing description in expanded mode -->
         <input
             type="text"
-            class={inputClass}
+            class="slds-input"
             value={searchTerm}
             placeholder={placeholder}
             oninput={handleInput}
@@ -12,6 +12,7 @@
             onblur={handleBlur}
             onfocus={handleFocus}
             autocomplete="off"
+            disabled={disabled}
         />
 
         <!-- v2.7.2: Validation error message -->
