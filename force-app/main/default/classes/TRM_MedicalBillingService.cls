@@ -905,16 +905,27 @@ public with sharing class TRM_MedicalBillingService {
 
             update lineItems;
 
-            // ALSO update Bill status to 'Processed'
+            // RAY FEEDBACK #10: Calculate Total Paid (sum of all Approved Amounts)
+            // Uses same logic as grid's footerTotals.totalPaid calculation
+            Decimal totalPaid = 0;
+            for (Bill_Line_Item__c item : lineItems) {
+                if (item.Approved_Amount__c != null) {
+                    totalPaid += item.Approved_Amount__c;
+                }
+            }
+
+            // ALSO update Bill status to 'Processed' AND Total_Paid__c
             Bill__c billToUpdate = new Bill__c(
                 Id = billId,
-                BCN_Custom_Status__c = 'Processed'
+                BCN_Custom_Status__c = 'Processed',
+                Total_Paid__c = totalPaid
             );
 
             update billToUpdate;
 
             System.debug('TRINITY: Marked ' + lineItems.size() + ' line items as Processed for Case: ' + caseId);
             System.debug('TRINITY: Marked Bill as Processed - Bill ID: ' + billId);
+            System.debug('RAY FEEDBACK #10: Updated Total_Paid__c = $' + totalPaid);
 
         } catch (Exception e) {
             System.debug('Error marking line items as processed: ' + e.getMessage());
@@ -1053,9 +1064,11 @@ public with sharing class TRM_MedicalBillingService {
     public static Bill__c getBillHeaderData(Id caseId) {
         try {
             // Query Bill linked to Case via BCN__c field
+            // RAY FEEDBACK #10: Added Total_Paid__c for Bill Header display
             List<Bill__c> bills = [
                 SELECT Id, Name, BCN_Number__c, Invoice_Id__c,
-                       Payee_Name__c, Payee_Name__r.Name, Payee_Name_Label__c
+                       Payee_Name__c, Payee_Name__r.Name, Payee_Name_Label__c,
+                       Total_Paid__c
                 FROM Bill__c
                 WHERE Id IN (SELECT BCN__c FROM Case WHERE Id = :caseId)
                 LIMIT 1
@@ -1143,19 +1156,17 @@ public with sharing class TRM_MedicalBillingService {
 
     /**
      * Get Member Accounts for the grid lookups
-     * TRINITY ENHANCEMENT v2.5.2: Filter by Case.Administration__c relationship
-     * RAY'S DOMAIN EXPERTISE: Account assignment per line item (MSA, PCA, SAK, MCA)
-     * RELATIONSHIP PATH: Case → Administration__c → Member_Account__c.Administration_Record__c
-     * BUSINESS RULE: Only show accounts that belong to the same Administration as the Case
-     * CLI DISCOVERY: Identified via BCN_Quote_Case_Record_Page.flexipage-meta.xml
-     *                 "Related Member Accounts" uses Financial_Accounts__r relationship
+     * CLIENT REQUEST (2026-02-02): Show ALL Member Accounts related to Claimant across ALL Administrations
+     * USE CASE: Medical provider can bill for multiple injuries on same bill (ex: shoulder + knee)
+     * RELATIONSHIP PATH: Case.claimants__c → Administration__c.claimant__c → Member_Account__c.Administration_Record__c
+     * BUSINESS RULE: Show ALL accounts for the Claimant, regardless of which Administration is selected on Case
      */
     @AuraEnabled(cacheable=true)
     public static List<Member_Account__c> getMemberAccounts(Id caseId) {
         try {
-            // Query Case to get Administration__c
+            // STEP 1: Query Case to get Claimant ID
             List<Case> cases = [
-                SELECT Id, Administration__c
+                SELECT Id, claimants__c
                 FROM Case
                 WHERE Id = :caseId
                 LIMIT 1
@@ -1167,18 +1178,36 @@ public with sharing class TRM_MedicalBillingService {
 
             Case currentCase = cases[0];
 
-            // If no Administration, return empty list (no accounts available)
-            if (currentCase.Administration__c == null) {
-                System.debug('TRINITY: Case ' + caseId + ' has no Administration__c - returning empty account list');
+            // If no Claimant, return empty list
+            if (currentCase.claimants__c == null) {
+                System.debug('TRINITY: Case ' + caseId + ' has no claimants__c - returning empty account list');
                 return new List<Member_Account__c>();
             }
 
-            // Query Member Accounts that belong to the same Administration
-            // TRINITY: Only show accounts related through Administration__c.Financial_Accounts__r
+            // STEP 2: Query ALL Administrations for this Claimant
+            List<Administration__c> claimantAdmins = [
+                SELECT Id
+                FROM Administration__c
+                WHERE claimant__c = :currentCase.claimants__c
+            ];
+
+            if (claimantAdmins.isEmpty()) {
+                System.debug('TRINITY: No Administrations found for Claimant ' + currentCase.claimants__c);
+                return new List<Member_Account__c>();
+            }
+
+            Set<Id> adminIds = new Set<Id>();
+            for (Administration__c admin : claimantAdmins) {
+                adminIds.add(admin.Id);
+            }
+
+            // STEP 3: CLIENT REQUEST - Query ALL Member Accounts across ALL Administrations for this Claimant
+            // This allows billing for multiple injuries on the same bill (ex: shoulder + knee)
             return [
-                SELECT Id, Name, Type__c, Status__c, BalanceAccrued__c
+                SELECT Id, Name, Type__c, Status__c, BalanceAccrued__c,
+                       Administration_Record__c, Administration_Record__r.Name
                 FROM Member_Account__c
-                WHERE Administration_Record__c = :currentCase.Administration__c
+                WHERE Administration_Record__c IN :adminIds
                 AND Status__c = 'Active'
                 ORDER BY Type__c, Name
                 LIMIT 100
@@ -1222,11 +1251,13 @@ public with sharing class TRM_MedicalBillingService {
     /**
      * TRINITY: Enhanced code search with type filtering and performance optimization
      * RAY'S REQUIREMENT: Search-as-you-type functionality for all code fields
+     * CLIENT REQUEST: Allow 1-character searches (Remark Codes like "2", "3", "4")
      */
     @AuraEnabled(cacheable=true)
     public static List<CodeLookupResult> searchCodes(String searchTerm, List<String> codeTypes, Integer limitCount) {
         try {
-            if (String.isBlank(searchTerm) || searchTerm.length() < 2) {
+            // CLIENT REQUEST: Allow 1+ character searches (Remark Codes can be single digit)
+            if (String.isBlank(searchTerm)) {
                 return new List<CodeLookupResult>();
             }
 
@@ -1234,15 +1265,35 @@ public with sharing class TRM_MedicalBillingService {
                 limitCount = 10;
             }
 
-            // TRINITY: Use SOSL for efficient search across Name and Description fields
-            String searchQuery = 'FIND \'' + String.escapeSingleQuotes(searchTerm) + '*\' IN ALL FIELDS ' +
-                               'RETURNING Code__c(Id, Name, Description__c, DescShort__c, Type__c ' +
-                               'WHERE Type__c IN :codeTypes ' +
-                               'ORDER BY Name ASC ' +
-                               'LIMIT ' + limitCount + ')';
+            List<Code__c> foundCodes;
 
-            List<List<SObject>> searchResults = Search.query(searchQuery);
-            List<Code__c> foundCodes = (List<Code__c>)searchResults[0];
+            // SALESFORCE LIMITATION: SOSL requires minimum 2 characters
+            // CLIENT REQUEST: Support single-character searches for Remark Codes (1, 2, 3, 4)
+            if (searchTerm.length() == 1) {
+                // Use SOQL for single-character searches (SOSL doesn't support this)
+                // Note: Only search in Name field (Description__c is not filterable with LIKE)
+                String likePattern = '%' + String.escapeSingleQuotes(searchTerm) + '%';
+
+                foundCodes = [
+                    SELECT Id, Name, Description__c, DescShort__c, Type__c
+                    FROM Code__c
+                    WHERE Type__c IN :codeTypes
+                    AND Name LIKE :likePattern
+                    ORDER BY Name ASC
+                    LIMIT :limitCount
+                ];
+
+            } else {
+                // Use SOSL for 2+ character searches (better performance)
+                String searchQuery = 'FIND \'' + String.escapeSingleQuotes(searchTerm) + '*\' IN ALL FIELDS ' +
+                                   'RETURNING Code__c(Id, Name, Description__c, DescShort__c, Type__c ' +
+                                   'WHERE Type__c IN :codeTypes ' +
+                                   'ORDER BY Name ASC ' +
+                                   'LIMIT ' + limitCount + ')';
+
+                List<List<SObject>> searchResults = Search.query(searchQuery);
+                foundCodes = (List<Code__c>)searchResults[0];
+            }
 
             List<CodeLookupResult> results = new List<CodeLookupResult>();
             for (Code__c code : foundCodes) {
