@@ -80,7 +80,7 @@
 
         <!-- STAGE RETENTION: Locked state banner -->
         <template if:true={isAdjudicated}>
-            <div class="slds-notify slds-notify_alert slds-theme_warning slds-m-bottom_small" role="alert">
+            <div class="slds-notify slds-notify_alert slds-theme_warning " role="alert">
                 <span class="slds-icon_container slds-icon-utility-lock slds-m-right_x-small" title="Locked">
                     <lightning-icon icon-name="utility:lock" size="x-small" alternative-text="Locked"></lightning-icon>
                 </span>
@@ -509,15 +509,17 @@
                                     <template if:false={showQuoteView}>
                                         <!-- Selection checkbox - RAY FEEDBACK #12: Disable when adjudicated -->
                                         <td class="slds-text-align_center">
-                                            <lightning-input
-                                                type="checkbox"
-                                                checked={item.selected}
-                                                onchange={handleRowSelect}
-                                                data-row-id={item.Id}
-                                                variant="label-hidden"
-                                                aria-label="Select Row"
-                                                disabled={isAdjudicated}>
-                                            </lightning-input>
+                                            <template if:false={item.isDraft}>
+                                                <lightning-input
+                                                    type="checkbox"
+                                                    checked={item.selected}
+                                                    onchange={handleRowSelect}
+                                                    data-row-id={item.Id}
+                                                    variant="label-hidden"
+                                                    aria-label="Select Row"
+                                                    disabled={isAdjudicated}>
+                                                </lightning-input>
+                                            </template>
                                         </td>
 
                                         <!-- Duplicate Flag -->
@@ -577,32 +579,54 @@
                                     </template>
                                     <template if:true={serviceDatesExpanded}>
                                         <td>
-                                            <!-- TRINITY v2.7.3: Use formatted date to prevent timezone shift -->
-                                            <input
-                                                type="text"
-                                                class="date-input"
-                                                value={item.formattedStartDate}
-                                                onchange={handleFieldChange}
-                                                onblur={handleFieldBlur}
-                                                onkeydown={handleKeyDown}
-                                                data-field="Service_Start_Date__c"
-                                                data-row-id={item.Id}
-                                                placeholder="MM/DD/YYYY"
-                                                disabled={isAdjudicated}>
+                                            <div class="date-input-container">
+                                                <!-- TRINITY v2.7.3: Use formatted date to prevent timezone shift -->
+                                                <input
+                                                    type="text"
+                                                    class="date-input"
+                                                    value={item.formattedStartDate}
+                                                    onchange={handleFieldChange}
+                                                    onblur={handleFieldBlur}
+                                                    onkeydown={handleKeyDown}
+                                                    data-field="Service_Start_Date__c"
+                                                    data-row-id={item.Id}
+                                                    pattern="^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/\d{4}$"
+                                                    placeholder="MM/DD/YYYY"
+                                                    message-when-pattern-mismatch="Use the format MM/DD/YYYY (e.g., 01/29/2026)."
+                                                    disabled={isAdjudicated}>
+
+                                                <!-- Date validation error message -->
+                                                <template if:true={item.startDateError}>
+                                                    <div class="date-validation-error">
+                                                        {item.startDateError}
+                                                    </div>
+                                                </template>
+                                            </div>
                                         </td>
                                         <td>
-                                            <!-- TRINITY v2.7.3: Use formatted date to prevent timezone shift -->
-                                            <input
-                                                type="text"
-                                                class="date-input"
-                                                value={item.formattedEndDate}
-                                                onchange={handleFieldChange}
-                                                onblur={handleFieldBlur}
-                                                onkeydown={handleKeyDown}
-                                                data-field="Service_End_Date__c"
-                                                data-row-id={item.Id}
-                                                placeholder="MM/DD/YYYY"
-                                                disabled={isAdjudicated}>
+                                            <div class="date-input-container">
+                                                <!-- TRINITY v2.7.3: Use formatted date to prevent timezone shift -->
+                                                <input
+                                                    type="text"
+                                                    class="date-input"
+                                                    value={item.formattedEndDate}
+                                                    onchange={handleFieldChange}
+                                                    onblur={handleFieldBlur}
+                                                    onkeydown={handleKeyDown}
+                                                    data-field="Service_End_Date__c"
+                                                    data-row-id={item.Id}
+                                                    pattern="^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/\d{4}$"
+                                                    message-when-pattern-mismatch="Use the format MM/DD/YYYY (e.g., 01/29/2026)."
+                                                    placeholder="MM/DD/YYYY"
+                                                    disabled={isAdjudicated}>
+
+                                                <!-- Date validation error message -->
+                                                <template if:true={item.endDateError}>
+                                                    <div class="date-validation-error">
+                                                        {item.endDateError}
+                                                    </div>
+                                                </template>
+                                            </div>
                                         </td>
                                     </template>
 
@@ -965,15 +989,17 @@
                                     <template if:true={showQuoteView}>
                                         <!-- Selection checkbox - RAY FEEDBACK #12: Disable when adjudicated -->
                                         <td class="slds-text-align_center">
-                                            <lightning-input
-                                                type="checkbox"
-                                                checked={item.selected}
-                                                onchange={handleRowSelect}
-                                                data-row-id={item.Id}
-                                                variant="label-hidden"
-                                                aria-label="Select Row"
-                                                disabled={isAdjudicated}>
-                                            </lightning-input>
+                                            <template if:false={item.isDraft}>
+                                                <lightning-input
+                                                    type="checkbox"
+                                                    checked={item.selected}
+                                                    onchange={handleRowSelect}
+                                                    data-row-id={item.Id}
+                                                    variant="label-hidden"
+                                                    aria-label="Select Row"
+                                                    disabled={isAdjudicated}>
+                                                </lightning-input>
+                                            </template>
                                         </td>
 
                                         <!-- Line Number -->

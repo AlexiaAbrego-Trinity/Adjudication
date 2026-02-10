@@ -46,6 +46,8 @@ import { LightningElement, api, track, wire } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { refreshApex } from '@salesforce/apex';
 import LightningConfirm from 'lightning/confirm';
+import { publish, MessageContext } from 'lightning/messageService';
+import DUPLICATE_CHECK_CHANNEL from '@salesforce/messageChannel/DuplicateCheckChannel__c';
 
 // STAGE RETENTION: Import modules for reading/writing Case field
 import { getRecord, updateRecord } from 'lightning/uiRecordApi';
@@ -220,6 +222,10 @@ export default class CustomBillLineItemGrid extends LightningElement {
 
     // Wire result storage
     wiredLineItemsResult;
+
+    // LMS: Wire MessageContext for publishing duplicate check completion
+    @wire(MessageContext)
+    messageContext;
 
     // TRINITY: Lookup field configuration for enhanced code fields
     // CORRECTED: Removed descriptionField - Description field is discrete and separate
@@ -483,6 +489,41 @@ export default class CustomBillLineItemGrid extends LightningElement {
 
         // Fallback: return as-is
         return dateValue;
+    }
+
+    // TRINITY: Validate date format MM/DD/YYYY and check if date is real
+    // CLIENT REQUEST: Short, specific error messages (Invalid year, Invalid month, Invalid day)
+    validateDateFormat(dateString) {
+        if (!dateString) return { valid: true }; // Empty is OK (backend validates required)
+
+        // Regex para MM/DD/YYYY
+        const dateRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(\d{4})$/;
+
+        if (!dateRegex.test(dateString)) {
+            return { valid: false, error: 'Use format MM/DD/YYYY' };
+        }
+
+        // Parse date parts
+        const [month, day, year] = dateString.split('/').map(Number);
+
+        // SALESFORCE LIMIT: Year must be between 1700-4000
+        if (year < 1700 || year > 4000) {
+            return { valid: false, error: 'Invalid year' };
+        }
+
+        // Validate month (should already be caught by regex, but double-check)
+        if (month < 1 || month > 12) {
+            return { valid: false, error: 'Invalid month' };
+        }
+
+        // Validate that the date is real (e.g., Feb 30 doesn't exist)
+        const testDate = new Date(year, month - 1, day);
+
+        if (testDate.getMonth() !== month - 1 || testDate.getDate() !== day) {
+            return { valid: false, error: 'Invalid day' };
+        }
+
+        return { valid: true };
     }
 
     showToast(title, message, variant = 'info') {
@@ -1285,10 +1326,11 @@ export default class CustomBillLineItemGrid extends LightningElement {
             console.log(`STAGE RETENTION: Saved stage "${salesforceStageValue}" for Case ${this.recordId}`);
 
             // AUTO DUPLICATE CHECK: Run when transitioning Keying → Bill Review
-            if (oldStage === 'keying' && newStage === 'billReview') {
-                console.log('AUTO DUPLICATE CHECK: Detected Keying → Bill Review transition');
-                await this.runAutomaticDuplicateCheck();
-            }
+            // MOVED TO FLOW: Case_Auto_Duplicate_Check_On_Stage_Change (Record-Triggered Flow)
+            // if (oldStage === 'keying' && newStage === 'billReview') {
+            //     console.log('AUTO DUPLICATE CHECK: Detected Keying → Bill Review transition');
+            //     await this.runAutomaticDuplicateCheck();
+            // }
 
         } catch (error) {
             console.error('STAGE RETENTION: Error saving stage to Salesforce:', error);
@@ -1298,18 +1340,22 @@ export default class CustomBillLineItemGrid extends LightningElement {
 
     /**
      * AUTO DUPLICATE CHECK: Run duplicate detection automatically when changing to Bill Review
-     * Requested by Ray Marden to eliminate manual steps
+     * MOVED TO FLOW: Case_Auto_Duplicate_Check_On_Stage_Change (Record-Triggered Flow)
      *
-     * This method:
-     * 1. Shows "Running duplicate check..." toast
-     * 2. Gets Bill ID from line items
-     * 3. Calls TRM_DuplicateDetectionApi.triggerBillDuplicateCheck()
-     * 4. Refreshes grid to show duplicate triangles
-     * 5. Shows success toast with results
+     * This method is kept for potential future use but is currently disabled.
+     * The duplicate check now runs server-side via Flow when stage changes to Bill Review.
      *
-     * Error handling: Errors are logged but not shown to user (automatic process)
+     * Original functionality:
+     * 1. Gets Bill ID from line items
+     * 2. Calls TRM_DuplicateDetectionApi.triggerBillDuplicateCheck()
+     * 3. Refreshes grid to show duplicate triangles
+     * 4. Shows success toast with results
      */
     async runAutomaticDuplicateCheck() {
+        // MOVED TO FLOW: This logic now runs server-side
+        // Uncomment below if you need to re-enable LWC-based duplicate check
+
+        /*
         // Get Bill ID from line items
         const billId = this.getBillIdFromLineItems();
 
@@ -1334,10 +1380,31 @@ export default class CustomBillLineItemGrid extends LightningElement {
 
             console.log('AUTO DUPLICATE CHECK: Completed -', result);
 
-            // Show success toast with friendly message (keep the green one)
-            this.showToast('Success',
-                'Duplicate check complete. Please review any warnings (⚠️) before adjudicating.',
-                'success');
+            // AUTO DUPLICATE CHECK: Dispatch event to notify other components (e.g., trmBillDuplicateSummary)
+            this.dispatchEvent(new CustomEvent('duplicatecheckComplete', {
+                detail: {
+                    billId: billId,
+                    message: result,
+                    source: 'grid'
+                },
+                bubbles: true,
+                composed: true
+            }));
+
+            // LMS: Publish message to notify components in different contexts (e.g., trmCaseDuplicateSummary)
+            const payload = {
+                billId: billId,
+                caseId: this.recordId,
+                message: result,
+                source: 'grid'
+            };
+            publish(this.messageContext, DUPLICATE_CHECK_CHANNEL, payload);
+            console.log('AUTO DUPLICATE CHECK: Published LMS message', payload);
+
+            // COMMENTED: Toast notifications disabled (moved to Flow)
+            // this.showToast('Success',
+            //     'Duplicate check complete. Please review any warnings (⚠️) before adjudicating.',
+            //     'success');
 
         } catch (error) {
             console.error('AUTO DUPLICATE CHECK: Error running duplicate check:', error);
@@ -1346,6 +1413,7 @@ export default class CustomBillLineItemGrid extends LightningElement {
             // User can still run manual check if needed
             console.warn('AUTO DUPLICATE CHECK: Failed, but user can run manual check');
         }
+        */
     }
 
     /**
@@ -1368,14 +1436,16 @@ export default class CustomBillLineItemGrid extends LightningElement {
     handleSelectAll(event) {
         const isChecked = event.target.checked;
         if (isChecked) {
-            this.selectedIds = new Set(this.lineItems.map(item => item.Id));
+            // MVADM-155 QC FIX: Exclude draft row from selection (consistent with allSelected getter)
+            const selectableItems = this.lineItems.filter(item => item.Id !== 'draft-row-temp');
+            this.selectedIds = new Set(selectableItems.map(item => item.Id));
         } else {
             this.selectedIds = new Set();
         }
-        // Update selection state in line items
+        // Update selection state in line items (only for selectable items, not draft row)
         this.lineItems = this.lineItems.map(item => ({
             ...item,
-            selected: isChecked
+            selected: item.Id !== 'draft-row-temp' ? isChecked : false
         }));
     }
 
@@ -1470,6 +1540,46 @@ export default class CustomBillLineItemGrid extends LightningElement {
             return item;
         });
 
+        // TRINITY: Validate date format BEFORE saving (prevent Salesforce error on change event too)
+        if (fieldName === 'Service_Start_Date__c' || fieldName === 'Service_End_Date__c') {
+            const validation = this.validateDateFormat(newValue);
+
+            if (!validation.valid) {
+                // Add error class to input for visual feedback (red border)
+                event.target.classList.add('has-error');
+
+                // Add error message to item (consistent with codeLookupField)
+                this.lineItems = this.lineItems.map(item => {
+                    if (item.Id === rowId) {
+                        return {
+                            ...item,
+                            startDateError: fieldName === 'Service_Start_Date__c' ? validation.error : item.startDateError,
+                            endDateError: fieldName === 'Service_End_Date__c' ? validation.error : item.endDateError
+                        };
+                    }
+                    return item;
+                });
+
+                console.warn('Invalid date format on change:', newValue, '-', validation.error);
+                return; // DO NOT save invalid date
+            } else {
+                // Remove error class if valid
+                event.target.classList.remove('has-error');
+
+                // Clear error message
+                this.lineItems = this.lineItems.map(item => {
+                    if (item.Id === rowId) {
+                        return {
+                            ...item,
+                            startDateError: fieldName === 'Service_Start_Date__c' ? null : item.startDateError,
+                            endDateError: fieldName === 'Service_End_Date__c' ? null : item.endDateError
+                        };
+                    }
+                    return item;
+                });
+            }
+        }
+
         // TRINITY: Auto-save the field change immediately
         await this.autoSaveField(rowId, fieldName, newValue);
 
@@ -1538,8 +1648,37 @@ export default class CustomBillLineItemGrid extends LightningElement {
 
         console.log('TRINITY DEBUG: Draft field changed:', fieldName, '=', newValue);
 
+        // TRINITY: Validate date format for draft row (show red border, don't prevent typing)
+        if (fieldName === 'Service_Start_Date__c' || fieldName === 'Service_End_Date__c') {
+            const validation = this.validateDateFormat(newValue);
+
+            if (!validation.valid) {
+                // Add error class to input for visual feedback (red border)
+                event.target.classList.add('has-error');
+                console.warn('Invalid date format in draft row:', newValue, '- Expected MM/DD/YYYY');
+            } else {
+                // Remove error class if valid
+                event.target.classList.remove('has-error');
+            }
+        }
+
         // CRITICAL: Update BOTH draftRow object AND lineItems array for display
-        this.draftRow = { ...this.draftRow, [fieldName]: newValue };
+        // Get validation result for error message
+        const dateValidation = (fieldName === 'Service_Start_Date__c' || fieldName === 'Service_End_Date__c')
+            ? this.validateDateFormat(newValue)
+            : { valid: true };
+
+        this.draftRow = {
+            ...this.draftRow,
+            [fieldName]: newValue,
+            // Add/clear error messages (consistent with codeLookupField)
+            startDateError: fieldName === 'Service_Start_Date__c'
+                ? (dateValidation.valid ? null : dateValidation.error)
+                : this.draftRow.startDateError,
+            endDateError: fieldName === 'Service_End_Date__c'
+                ? (dateValidation.valid ? null : dateValidation.error)
+                : this.draftRow.endDateError
+        };
 
         // TRINITY v2.7.3: Update formatted dates when date fields change in draft row
         if (fieldName === 'Service_Start_Date__c') {
@@ -1556,8 +1695,12 @@ export default class CustomBillLineItemGrid extends LightningElement {
                 // TRINITY v2.7.3: Update formatted dates in lineItems array too
                 if (fieldName === 'Service_Start_Date__c') {
                     updatedItem.formattedStartDate = newValue;
+                    // Add/clear error message
+                    updatedItem.startDateError = this.draftRow.startDateError;
                 } else if (fieldName === 'Service_End_Date__c') {
                     updatedItem.formattedEndDate = newValue;
+                    // Add/clear error message
+                    updatedItem.endDateError = this.draftRow.endDateError;
                 }
 
                 return updatedItem;
@@ -1589,6 +1732,23 @@ export default class CustomBillLineItemGrid extends LightningElement {
         // STEP 1: Capture current draft data for save
         const savingRowData = { ...this.draftRow };
         console.log('TRINITY DEBUG: Captured draft data:', JSON.stringify(savingRowData, null, 2));
+
+        // TRINITY: Validate dates before saving draft row (no toast - error message already shown)
+        if (savingRowData.Service_Start_Date__c) {
+            const startDateValidation = this.validateDateFormat(savingRowData.Service_Start_Date__c);
+            if (!startDateValidation.valid) {
+                // Error message already displayed below input field
+                return; // DO NOT save
+            }
+        }
+
+        if (savingRowData.Service_End_Date__c) {
+            const endDateValidation = this.validateDateFormat(savingRowData.Service_End_Date__c);
+            if (!endDateValidation.valid) {
+                // Error message already displayed below input field
+                return; // DO NOT save
+            }
+        }
 
         // RAY FEEDBACK #5: Mark draft row as "saving" but keep it in the DOM
         // This prevents the fields from disappearing and losing focus
@@ -2259,6 +2419,11 @@ export default class CustomBillLineItemGrid extends LightningElement {
         const { fieldName, codeName, description } = event.detail;
         const rowId = event.target.dataset.rowId;
 
+        // RAY FEEDBACK #7 FIX: Check Quantity BEFORE updating this.lineItems
+        const itemBeforeUpdate = this.lineItems.find(item => item.Id === rowId);
+        const shouldAutoPopulateQuantity = fieldName === 'CPT_HCPCS_NDC__c' &&
+                                          (!itemBeforeUpdate?.Quantity__c || itemBeforeUpdate.Quantity__c === null);
+
         // TRINITY: Update code value AND cache description for tooltip
         this.lineItems = this.lineItems.map(item => {
             if (item.Id === rowId) {
@@ -2279,7 +2444,7 @@ export default class CustomBillLineItemGrid extends LightningElement {
                         updates.Description__c = description;
                     }
                     // RAY FEEDBACK #7: Auto-populate Quantity to 1 when CPT/HCPCS/NDC code is entered
-                    if (!item.Quantity__c || item.Quantity__c === null) {
+                    if (shouldAutoPopulateQuantity) {
                         updates.Quantity__c = 1;
                     }
                 } else if (fieldName === 'Place_of_Service__c') {
@@ -2325,15 +2490,13 @@ export default class CustomBillLineItemGrid extends LightningElement {
         // MVADM-109: Save code field AND Description__c field if CPT/HCPCS/NDC code was selected
         // RAY FEEDBACK #7: Also save Quantity__c = 1 if it's empty when CPT code is entered
         if (fieldName === 'CPT_HCPCS_NDC__c' && description) {
-            // Find the current item to check Quantity__c
-            const currentItem = this.lineItems.find(item => item.Id === rowId);
             const savePromises = [
                 this.autoSaveField(rowId, fieldName, codeName),
                 this.autoSaveField(rowId, 'Description__c', description)
             ];
 
-            // RAY FEEDBACK #7: If Quantity is empty, save it as 1
-            if (currentItem && (!currentItem.Quantity__c || currentItem.Quantity__c === null)) {
+            // RAY FEEDBACK #7 FIX: Use the flag we calculated BEFORE updating this.lineItems
+            if (shouldAutoPopulateQuantity) {
                 savePromises.push(this.autoSaveField(rowId, 'Quantity__c', 1));
             }
 
@@ -2566,6 +2729,92 @@ export default class CustomBillLineItemGrid extends LightningElement {
 
         console.log('Auto-saving field on blur:', fieldName, 'for row:', rowId, 'value:', newValue);
 
+        // TRINITY: Validate date format BEFORE saving to prevent Salesforce error
+        if (fieldName === 'Service_Start_Date__c' || fieldName === 'Service_End_Date__c') {
+            const validation = this.validateDateFormat(newValue);
+
+            if (!validation.valid) {
+                // Add error class to input for visual feedback (red border)
+                event.target.classList.add('has-error');
+
+                // Add error message to item (consistent with codeLookupField)
+                this.lineItems = this.lineItems.map(item => {
+                    if (item.Id === rowId) {
+                        return {
+                            ...item,
+                            startDateError: fieldName === 'Service_Start_Date__c' ? validation.error : item.startDateError,
+                            endDateError: fieldName === 'Service_End_Date__c' ? validation.error : item.endDateError
+                        };
+                    }
+                    return item;
+                });
+
+                console.warn('Invalid date format:', newValue, '-', validation.error);
+                return; // DO NOT save invalid date
+            } else {
+                // Remove error class if valid
+                event.target.classList.remove('has-error');
+
+                // Clear error message
+                this.lineItems = this.lineItems.map(item => {
+                    if (item.Id === rowId) {
+                        return {
+                            ...item,
+                            startDateError: fieldName === 'Service_Start_Date__c' ? null : item.startDateError,
+                            endDateError: fieldName === 'Service_End_Date__c' ? null : item.endDateError
+                        };
+                    }
+                    return item;
+                });
+
+                // CLIENT REQUEST: Auto-copy Start Date to End Date if End Date is empty
+                if (fieldName === 'Service_Start_Date__c') {
+                    // Check if End Date is empty
+                    const currentItem = rowId === 'draft-row-temp' ? this.draftRow : this.lineItems.find(item => item.Id === rowId);
+
+                    if (currentItem && !currentItem.Service_End_Date__c) {
+                        console.log('Auto-copying Start Date to End Date:', newValue);
+
+                        if (rowId === 'draft-row-temp') {
+                            // Update draft row
+                            this.draftRow = {
+                                ...this.draftRow,
+                                Service_End_Date__c: newValue,
+                                formattedEndDate: newValue
+                            };
+
+                            // Update draft row in lineItems array
+                            this.lineItems = this.lineItems.map(item => {
+                                if (item.Id === 'draft-row-temp') {
+                                    return {
+                                        ...item,
+                                        Service_End_Date__c: newValue,
+                                        formattedEndDate: newValue
+                                    };
+                                }
+                                return item;
+                            });
+                        } else {
+                            // Update regular row in lineItems array
+                            this.lineItems = this.lineItems.map(item => {
+                                if (item.Id === rowId) {
+                                    return {
+                                        ...item,
+                                        Service_End_Date__c: newValue,
+                                        formattedEndDate: newValue
+                                    };
+                                }
+                                return item;
+                            });
+
+                            // Auto-save the End Date field for regular rows
+                            await this.autoSaveField(rowId, 'Service_End_Date__c', newValue);
+                        }
+                    }
+                }
+            }
+        }
+
         // RAY FEEDBACK #5: Handle draft row save on blur instead of on change
         if (rowId === 'draft-row-temp') {
             console.log('RAY FEEDBACK #5: Draft row blur detected, checking if should save...');
@@ -2797,9 +3046,21 @@ export default class CustomBillLineItemGrid extends LightningElement {
                 await deleteBillLineItems({ itemIds: realIdsToDelete });
                 console.log('🗑️ Apex deletion successful');
 
+                // FIX: Update local state immediately (optimistic update for better UX)
+                const itemsBeforeDelete = [...this.lineItems];
+                this.lineItems = this.lineItems.filter(item => !realIdsToDelete.includes(item.Id));
+                console.log('🗑️ Local state updated - items removed from UI immediately');
+
                 // MVADM-188 FIX: Refresh grid from database to ensure sync
-                await refreshApex(this.wiredLineItemsResult);
-                console.log('🗑️ Grid refreshed after deletion');
+                try {
+                    await refreshApex(this.wiredLineItemsResult);
+                    console.log('🗑️ Backend refresh successful');
+                } catch (refreshError) {
+                    // If refresh fails, revert local state to prevent UI/backend mismatch
+                    console.error('🗑️ Refresh failed, reverting local state:', refreshError);
+                    this.lineItems = itemsBeforeDelete;
+                    throw refreshError; // Re-throw to trigger main catch block
+                }
 
                 // MVADM-188 FIX: Re-sequence line numbers after deletion
                 await this.resequenceLineItems();

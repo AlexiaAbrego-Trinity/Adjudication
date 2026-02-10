@@ -386,6 +386,36 @@ public with sharing class TRM_DuplicateDetectionApi {
     }
 
     /**
+     * @description Invocable method wrapper for Flow to trigger duplicate check
+     * ADDED: For Record-Triggered Flow automation (Case_Auto_Duplicate_Check_On_Stage_Change)
+     * This method wraps the existing triggerBillDuplicateCheck() method to make it callable from Flows
+     * @param requests List of FlowRequest objects containing billId
+     */
+    @InvocableMethod(label='Trigger Bill Duplicate Check' description='Triggers duplicate detection for all line items in a Bill' category='Duplicate Detection')
+    public static void triggerBillDuplicateCheckFromFlow(List<FlowRequest> requests) {
+        for (FlowRequest request : requests) {
+            if (request.billId != null) {
+                try {
+                    // Call the existing @AuraEnabled method
+                    triggerBillDuplicateCheck(request.billId);
+                } catch (Exception e) {
+                    System.debug('Error in triggerBillDuplicateCheckFromFlow: ' + e.getMessage());
+                    // Continue processing other requests even if one fails
+                }
+            }
+        }
+    }
+
+    /**
+     * @description Input wrapper class for Invocable method
+     * Required by @InvocableMethod - Flows pass data using this wrapper
+     */
+    public class FlowRequest {
+        @InvocableVariable(label='Bill ID' description='The Bill record ID to check for duplicates' required=true)
+        public Id billId;
+    }
+
+    /**
      * @description Get Case-level duplicate detection summary
      * ADDED: For Case-level duplicate detection enhancement
      * @param caseId The Case record ID
@@ -434,7 +464,7 @@ public with sharing class TRM_DuplicateDetectionApi {
             // Query Bill with Line Items and duplicate status
             List<Bill__c> bills = [
                 SELECT Id, Name,
-                    (SELECT Id, Name, Duplicate_Status__c, Matching_Records__c
+                    (SELECT Id, Name, Duplicate_Status__c, Matching_Records__c, Last_Duplicate_Check__c
                      FROM Bill_Line_Items__r
                      LIMIT 200)
                 FROM Bill__c
@@ -458,6 +488,12 @@ public with sharing class TRM_DuplicateDetectionApi {
                     summary.exactMatches++;
                 } else if (lineItem.Duplicate_Status__c == 'Potential') {
                     summary.potentialMatches++;
+                }
+
+                // Track most recent check date
+                if (lineItem.Last_Duplicate_Check__c != null &&
+                    (summary.lastCheckDate == null || lineItem.Last_Duplicate_Check__c > summary.lastCheckDate)) {
+                    summary.lastCheckDate = lineItem.Last_Duplicate_Check__c;
                 }
             }
 
@@ -551,18 +587,49 @@ public with sharing class TRM_DuplicateDetectionApi {
                 }
             }
 
-            // Query duplicate Bill Line Items with their Case information
+            // Query duplicate Bill Line Items with their Bill IDs, then query Cases to get Case IDs
+            // FIX: Use Bill__c instead of Bill_Case_Data__c to avoid field dependency issues
             Map<Id, Id> lineItemToCaseMap = new Map<Id, Id>();
             if (!duplicateLineItemIds.isEmpty()) {
+                // Step 1: Get Bill IDs from Line Items
+                Map<Id, Id> lineItemToBillMap = new Map<Id, Id>();
                 List<Bill_Line_Item__c> duplicateLineItems = [
-                    SELECT Id, Bill__r.Bill_Case_Data__c
+                    SELECT Id, Bill__c
                     FROM Bill_Line_Item__c
                     WHERE Id IN :duplicateLineItemIds
                     WITH SECURITY_ENFORCED
                 ];
                 for (Bill_Line_Item__c dupItem : duplicateLineItems) {
-                    if (dupItem.Bill__r.Bill_Case_Data__c != null) {
-                        lineItemToCaseMap.put(dupItem.Id, dupItem.Bill__r.Bill_Case_Data__c);
+                    if (dupItem.Bill__c != null) {
+                        lineItemToBillMap.put(dupItem.Id, dupItem.Bill__c);
+                    }
+                }
+
+                // Step 2: Query Cases to find which Case has each Bill (via BCN__c lookup)
+                if (!lineItemToBillMap.isEmpty()) {
+                    Set<Id> billIds = new Set<Id>(lineItemToBillMap.values());
+                    List<Case> relatedCases = [
+                        SELECT Id, BCN__c
+                        FROM Case
+                        WHERE BCN__c IN :billIds
+                        WITH SECURITY_ENFORCED
+                    ];
+
+                    // Create Bill ID to Case ID map
+                    Map<Id, Id> billToCaseMap = new Map<Id, Id>();
+                    for (Case relatedCase : relatedCases) {
+                        if (relatedCase.BCN__c != null) {
+                            billToCaseMap.put(relatedCase.BCN__c, relatedCase.Id);
+                        }
+                    }
+
+                    // Map Line Item ID to Case ID
+                    for (Id lineItemId : lineItemToBillMap.keySet()) {
+                        Id billId = lineItemToBillMap.get(lineItemId);
+                        Id relatedCaseId = billToCaseMap.get(billId);
+                        if (relatedCaseId != null) {
+                            lineItemToCaseMap.put(lineItemId, relatedCaseId);
+                        }
                     }
                 }
             }
