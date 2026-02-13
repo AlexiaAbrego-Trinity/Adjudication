@@ -386,6 +386,54 @@ public with sharing class TRM_DuplicateDetectionApi {
     }
 
     /**
+     * @description Check all line items in a Bill for duplicates and return count
+     * @param billId The Bill record ID
+     * @return Integer count of line items with duplicates (Exact + Potential)
+     * ADDED: For adjudication duplicate warning modal - returns count instead of message
+     */
+    @AuraEnabled
+    public static Integer checkBillForDuplicates(Id billId) {
+        try {
+            // Input validation
+            if (billId == null) {
+                throw new AuraHandledException('Bill ID is required');
+            }
+
+            // Validate record ID is for Bill__c
+            String objectType = billId.getSObjectType().getDescribe().getName();
+            if (objectType != 'Bill__c') {
+                throw new AuraHandledException('Invalid record type. Expected Bill.');
+            }
+
+            // Get all line items for this Bill with required fields for duplicate detection
+            List<Bill_Line_Item__c> lineItems = [
+                SELECT Id, CPT_HCPCS_NDC__c, Charge__c, Service_Start_Date__c,
+                       Service_End_Date__c, Bill__r.Patient_Id__c, Duplicate_Status__c
+                FROM Bill_Line_Item__c
+                WHERE Bill__c = :billId
+                WITH SECURITY_ENFORCED
+            ];
+
+            if (lineItems.isEmpty()) {
+                return 0;
+            }
+
+            // Trigger duplicate detection for all line items
+            TRM_DuplicateDetectionModels.BulkProcessingResultDTO result =
+                TRM_DuplicateDetectionService.detectDuplicates(lineItems);
+
+            // Return count of items with duplicates (exact + potential)
+            return result.exactMatches + result.potentialMatches;
+
+        } catch (AuraHandledException e) {
+            throw e;
+        } catch (Exception e) {
+            System.debug('TRM_DuplicateDetectionApi.checkBillForDuplicates error: ' + e.getMessage());
+            throw new AuraHandledException('Error checking duplicates: ' + e.getMessage());
+        }
+    }
+
+    /**
      * @description Invocable method wrapper for Flow to trigger duplicate check
      * ADDED: For Record-Triggered Flow automation (Case_Auto_Duplicate_Check_On_Stage_Change)
      * This method wraps the existing triggerBillDuplicateCheck() method to make it callable from Flows

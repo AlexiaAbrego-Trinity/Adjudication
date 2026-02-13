@@ -89,9 +89,12 @@ public with sharing class TRM_DuplicateDetectionModels {
                     this.billExternalId = record.Bill__r.External_Id__c;
                     this.patientId = record.Bill__r.Patient_Id__c;
 
-                    // ENHANCED: Case information for navigation
-                    if (record.Bill__r.Bill_Case_Data__r != null) {
-                        this.caseNumber = record.Bill__r.Bill_Case_Data__r.CaseNumber;
+                    // FIX: Changed to check Bill_Case_Data__c (lookup field) instead of Bill_Case_Data__r (relationship)
+                    // to prevent SOQL error. CaseNumber is not populated since queries only fetch the lookup ID.
+                    // If CaseNumber is needed in the future, update queries to include Bill__r.Bill_Case_Data__r.CaseNumber
+                    if (record.Bill__r.Bill_Case_Data__c != null) {
+                        // Note: caseNumber remains null - only the Case ID is available
+                        // this.caseNumber = null; // Explicitly showing this is not set
                     }
                 }
 
@@ -342,7 +345,7 @@ public with sharing class TRM_DuplicateDetectionModels {
             this.potentialMatches = 0;
             this.totalMatches = 0;
             this.hasWarnings = false;
-            this.lastCheckDate = System.now();
+            this.lastCheckDate = null; // Will be set from line items' Last_Duplicate_Check__c
             this.summaryMessage = 'No duplicate analysis available';
             this.statusClass = 'status-none';
         }
