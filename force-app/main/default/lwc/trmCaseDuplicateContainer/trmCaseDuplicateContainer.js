@@ -22,12 +22,24 @@ export default class TrmCaseDuplicateContainer extends LightningElement {
      * Opens the comprehensive modal with Case data
      */
     handleViewAllDuplicates(event) {
+        console.log('TrmCaseDuplicateContainer: handleViewAllDuplicates called');
+        console.log('TrmCaseDuplicateContainer: event.detail =', event.detail);
+        console.log('TrmCaseDuplicateContainer: this.recordId =', this.recordId);
+
         const detail = event.detail;
-        
+
         if (detail && detail.caseId) {
             this.modalCaseId = detail.caseId;
             this.modalCaseSummary = detail.caseSummary;
             this.isModalOpen = true;
+            console.log('TrmCaseDuplicateContainer: Opening modal with caseId =', this.modalCaseId);
+        } else {
+            console.error('TrmCaseDuplicateContainer: No caseId in event detail!', detail);
+            // Fallback: use recordId from container
+            this.modalCaseId = this.recordId;
+            this.modalCaseSummary = detail?.caseSummary;
+            this.isModalOpen = true;
+            console.log('TrmCaseDuplicateContainer: Using fallback recordId =', this.modalCaseId);
         }
     }
     
@@ -37,8 +49,9 @@ export default class TrmCaseDuplicateContainer extends LightningElement {
      */
     handleModalClose() {
         this.isModalOpen = false;
-        this.modalCaseId = null;
-        this.modalCaseSummary = null;
+        // DO NOT clear modalCaseId and modalCaseSummary - keep them for next open
+        // this.modalCaseId = null;
+        // this.modalCaseSummary = null;
     }
     
     /**

@@ -20,9 +20,11 @@ import { NavigationMixin } from 'lightning/navigation';
 import getBillDuplicateSummary from '@salesforce/apex/TRM_DuplicateDetectionApi.getBillDuplicateSummary';
 import triggerBillDuplicateCheck from '@salesforce/apex/TRM_DuplicateDetectionApi.triggerBillDuplicateCheck';
 import getBillLineItemsWithMatches from '@salesforce/apex/TRM_DuplicateDetectionApi.getBillLineItemsWithMatches';
+import getBillIdFromCase from '@salesforce/apex/TRM_MedicalBillingService.getBillIdFromCase';
 
 export default class TrmBillDuplicateSummary extends NavigationMixin(LightningElement) {
-    @api recordId; // Bill__c record ID
+    @api recordId; // Case ID (when used in Case page) or Bill ID (when used in Bill page)
+    @track billId; // Actual Bill ID to use for duplicate detection
     @track isLoading = false;
     @track isCheckingDuplicates = false;
 
@@ -32,11 +34,62 @@ export default class TrmBillDuplicateSummary extends NavigationMixin(LightningEl
     @track modalError = null;
     @track allMatches = [];
     @track groupedMatches = [];
-    
+
     // Wire the Bill duplicate summary data
-    @wire(getBillDuplicateSummary, { billId: '$recordId' })
+    @wire(getBillDuplicateSummary, { billId: '$billId' })
     duplicateSummary;
-    
+
+    /**
+     * @description Component lifecycle - Auto-trigger duplicate detection when Case/Bill is opened
+     * AUTO DUPLICATE CHECK: Runs EVERY TIME the Case is opened to ensure fresh data
+     */
+    async connectedCallback() {
+        console.log('[TrmBillDuplicateSummary] Component loaded - triggering automatic duplicate detection');
+        console.log('[TrmBillDuplicateSummary] Initial recordId (Case or Bill):', this.recordId);
+
+        // Wait a bit for recordId to be available
+        setTimeout(async () => {
+            console.log('[TrmBillDuplicateSummary] After timeout - recordId:', this.recordId);
+            if (this.recordId) {
+                // Get Bill ID from Case (recordId could be Case ID or Bill ID)
+                await this.resolveBillId();
+
+                if (this.billId) {
+                    console.log('[TrmBillDuplicateSummary] Bill ID resolved:', this.billId);
+                    console.log('[TrmBillDuplicateSummary] Calling handleCheckAllDuplicates()');
+                    this.handleCheckAllDuplicates();
+                } else {
+                    console.warn('[TrmBillDuplicateSummary] No Bill ID available - skipping auto-detect');
+                }
+            } else {
+                console.warn('[TrmBillDuplicateSummary] No recordId available - skipping auto-detect');
+            }
+        }, 500);
+    }
+
+    /**
+     * @description Resolve Bill ID from Case ID or use recordId directly if it's already a Bill ID
+     */
+    async resolveBillId() {
+        try {
+            // Try to get Bill ID from Case (assumes recordId is Case ID)
+            const resolvedBillId = await getBillIdFromCase({ caseId: this.recordId });
+
+            if (resolvedBillId) {
+                console.log('[TrmBillDuplicateSummary] Bill ID from Case:', resolvedBillId);
+                this.billId = resolvedBillId;
+            } else {
+                // If no Bill found via Case, assume recordId is already a Bill ID
+                console.log('[TrmBillDuplicateSummary] No Bill from Case - using recordId as Bill ID');
+                this.billId = this.recordId;
+            }
+        } catch (error) {
+            console.error('[TrmBillDuplicateSummary] Error resolving Bill ID:', error);
+            // Fallback: assume recordId is Bill ID
+            this.billId = this.recordId;
+        }
+    }
+
     /**
      * @description Check if component should be visible
      */
@@ -174,35 +227,38 @@ export default class TrmBillDuplicateSummary extends NavigationMixin(LightningEl
     
     /**
      * @description Handle manual duplicate check for all line items
+     * AUTO DUPLICATE CHECK: Toasts removed to avoid repetitive notifications
      */
     async handleCheckAllDuplicates() {
-        if (!this.recordId) {
-            this.showToast('Error', 'No Bill record ID available', 'error');
+        if (!this.billId) {
+            console.warn('[TrmBillDuplicateSummary] No Bill ID available');
             return;
         }
-        
+
         this.isCheckingDuplicates = true;
-        
+
         try {
-            const result = await triggerBillDuplicateCheck({ billId: this.recordId });
-            
-            // Refresh the summary data
-            await refreshApex(this.duplicateSummary);
-            
-            this.showToast('Success', result, 'success');
-            
-            // Dispatch event to notify parent components
+            const result = await triggerBillDuplicateCheck({ billId: this.billId });
+
+            console.log('[TrmBillDuplicateSummary] Duplicate check completed:', result);
+
+            // Dispatch event to notify parent components FIRST
             this.dispatchEvent(new CustomEvent('duplicatecheckComplete', {
-                detail: { 
-                    billId: this.recordId,
-                    message: result
+                detail: {
+                    billId: this.billId,
+                    message: result,
+                    source: 'summary'
                 },
                 bubbles: true,
                 composed: true
             }));
-            
+
+            // THEN refresh the summary data (like the refresh button does)
+            await refreshApex(this.duplicateSummary);
+
         } catch (error) {
             console.error('[TrmBillDuplicateSummary] Check duplicates error:', error);
+            // Only show toast on error (not on success to avoid repetitive notifications)
             this.showToast('Error', error.body?.message || 'Failed to check duplicates', 'error');
         } finally {
             this.isCheckingDuplicates = false;
@@ -266,7 +322,7 @@ export default class TrmBillDuplicateSummary extends NavigationMixin(LightningEl
     async loadAndParseMatchingRecords() {
         try {
             // Get all line items for this Bill that have matching records
-            const lineItemsWithMatches = await getBillLineItemsWithMatches({ billId: this.recordId });
+            const lineItemsWithMatches = await getBillLineItemsWithMatches({ billId: this.billId });
 
             if (!lineItemsWithMatches || lineItemsWithMatches.length === 0) {
                 this.groupedMatches = [];

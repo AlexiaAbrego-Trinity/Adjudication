@@ -14,6 +14,7 @@
 import { LightningElement, api, wire, track } from 'lwc';
 import { NavigationMixin } from 'lightning/navigation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { refreshApex } from '@salesforce/apex';
 import getDuplicateData from '@salesforce/apex/TRM_DuplicateDetectionApi.getDuplicateData';
 import triggerManualCheck from '@salesforce/apex/TRM_DuplicateDetectionApi.triggerManualCheck';
 

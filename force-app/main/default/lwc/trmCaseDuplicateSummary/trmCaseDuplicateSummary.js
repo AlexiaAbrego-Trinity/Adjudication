@@ -11,26 +11,153 @@ import { LightningElement, api, wire } from 'lwc';
 import { getRecord } from 'lightning/uiRecordApi';
 import { refreshApex } from '@salesforce/apex';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { subscribe, unsubscribe, MessageContext } from 'lightning/messageService';
+import DUPLICATE_CHECK_CHANNEL from '@salesforce/messageChannel/DuplicateCheckChannel__c';
 import getCaseDuplicateSummary from '@salesforce/apex/TRM_DuplicateDetectionApi.getCaseDuplicateSummary';
+import getBillIdFromCase from '@salesforce/apex/TRM_MedicalBillingService.getBillIdFromCase';
+import triggerBillDuplicateCheck from '@salesforce/apex/TRM_DuplicateDetectionApi.triggerBillDuplicateCheck';
 
 // Case fields needed for component
 const CASE_FIELDS = ['Case.Id', 'Case.CaseNumber', 'Case.BCN__c'];
 
 export default class TrmCaseDuplicateSummary extends LightningElement {
     @api recordId; // Case record ID from record page context
-    
+
     // Component state
     caseSummary = null;
     error = null;
     isLoading = true;
     wiredSummaryResult;
-    
+
+    // LMS: Subscription for duplicate check completion messages
+    subscription = null;
+
+    // LMS: Wire MessageContext for subscribing to messages
+    @wire(MessageContext)
+    messageContext;
+
+    /**
+     * @description Component lifecycle - NO auto-trigger (detection runs when stage changes to Bill Review)
+     * CHANGED: Removed auto-trigger to prevent duplicate detection on page load
+     * ADDED: Subscribe to LMS for duplicate check completion from grid
+     */
+    connectedCallback() {
+        console.log('[TrmCaseDuplicateSummary] Component loaded - waiting for duplicate detection from grid stage change');
+        console.log('[TrmCaseDuplicateSummary] Case ID:', this.recordId);
+
+        // LMS: Subscribe to duplicate check completion messages
+        this.subscribeToMessageChannel();
+    }
+
+    /**
+     * @description Component lifecycle cleanup
+     * ADDED: Unsubscribe from LMS when component is destroyed
+     */
+    disconnectedCallback() {
+        this.unsubscribeFromMessageChannel();
+    }
+
+    /**
+     * @description Subscribe to LMS duplicate check channel
+     * ADDED: Listen for duplicate check completion from grid via LMS
+     */
+    subscribeToMessageChannel() {
+        if (!this.subscription) {
+            this.subscription = subscribe(
+                this.messageContext,
+                DUPLICATE_CHECK_CHANNEL,
+                (message) => this.handleDuplicateCheckMessage(message)
+            );
+            console.log('[TrmCaseDuplicateSummary] Subscribed to duplicate check channel');
+        }
+    }
+
+    /**
+     * @description Unsubscribe from LMS duplicate check channel
+     * ADDED: Clean up subscription when component is destroyed
+     */
+    unsubscribeFromMessageChannel() {
+        if (this.subscription) {
+            unsubscribe(this.subscription);
+            this.subscription = null;
+            console.log('[TrmCaseDuplicateSummary] Unsubscribed from duplicate check channel');
+        }
+    }
+
+    /**
+     * @description Handle duplicate check completion message from LMS
+     * ADDED: Auto-refresh summary when grid completes duplicate detection
+     */
+    async handleDuplicateCheckMessage(message) {
+        console.log('[TrmCaseDuplicateSummary] Received duplicate check message via LMS', message);
+
+        // Only refresh if the message is for this Case
+        if (message.caseId === this.recordId) {
+            try {
+                // Refresh the summary data to get updated lastCheckDate
+                await refreshApex(this.wiredSummaryResult);
+
+                console.log('[TrmCaseDuplicateSummary] Summary refreshed after duplicate check');
+            } catch (error) {
+                console.error('[TrmCaseDuplicateSummary] Error refreshing summary:', error);
+            }
+        } else {
+            console.log('[TrmCaseDuplicateSummary] Message is for different Case, ignoring');
+        }
+    }
+
+    /**
+     * @description Run automatic duplicate detection for the Case's Bill
+     */
+    async runAutoDuplicateCheck() {
+        try {
+            console.log('[TrmCaseDuplicateSummary] Getting Bill ID from Case...');
+
+            // Get Bill ID from Case
+            const billId = await getBillIdFromCase({ caseId: this.recordId });
+
+            if (!billId) {
+                console.log('[TrmCaseDuplicateSummary] No Bill associated with this Case - skipping duplicate check');
+                return;
+            }
+
+            console.log('[TrmCaseDuplicateSummary] Bill ID resolved:', billId);
+            console.log('[TrmCaseDuplicateSummary] Triggering duplicate detection...');
+
+            // Trigger duplicate detection for the Bill
+            const result = await triggerBillDuplicateCheck({ billId: billId });
+
+            console.log('[TrmCaseDuplicateSummary] Duplicate check completed:', result);
+
+            // Dispatch event to notify other components
+            this.dispatchEvent(new CustomEvent('duplicatecheckComplete', {
+                detail: {
+                    caseId: this.recordId,
+                    billId: billId,
+                    message: result,
+                    source: 'caseSummary'
+                },
+                bubbles: true,
+                composed: true
+            }));
+
+            // Refresh the summary data
+            await refreshApex(this.wiredSummaryResult);
+
+            console.log('[TrmCaseDuplicateSummary] Summary refreshed');
+
+        } catch (error) {
+            console.error('[TrmCaseDuplicateSummary] Error running auto duplicate check:', error);
+            // Don't show error to user - it's an automatic background process
+        }
+    }
+
     /**
      * @description Wire Case record data
      */
     @wire(getRecord, { recordId: '$recordId', fields: CASE_FIELDS })
     caseRecord;
-    
+
     /**
      * @description Wire Case duplicate summary data
      */
@@ -38,7 +165,7 @@ export default class TrmCaseDuplicateSummary extends LightningElement {
     wiredCaseSummary(result) {
         this.wiredSummaryResult = result;
         this.isLoading = true;
-        
+
         if (result.data) {
             this.caseSummary = result.data;
             this.error = null;
@@ -54,9 +181,10 @@ export default class TrmCaseDuplicateSummary extends LightningElement {
     /**
      * @description Check if component should be visible
      * GETTER: Prevents LWC1060 template expression error
+     * CHANGED: Only show after duplicate detection has run (lastCheckDate != null)
      */
     get showComponent() {
-        return this.recordId && !this.isLoading;
+        return this.recordId && !this.isLoading && this.caseSummary && this.caseSummary.lastCheckDate != null;
     }
     
     /**
