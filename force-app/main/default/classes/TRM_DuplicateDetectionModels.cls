@@ -382,6 +382,7 @@ public with sharing class TRM_DuplicateDetectionModels {
      * @description Enhanced match DTO with Case navigation properties
      * ADDED: For comprehensive Case-level duplicate modal
      * Used by trmCaseAllDuplicatesModal component
+     * ENHANCED: Added source line item fields for 4-level navigation
      */
     public class CaseMatchDTO extends MatchDTO {
         @AuraEnabled public Id caseId { get; set; }
@@ -390,6 +391,13 @@ public with sharing class TRM_DuplicateDetectionModels {
         @AuraEnabled public String confidenceLabel { get; set; }
         @AuraEnabled public String formattedChargeAmount { get; set; }
         @AuraEnabled public String formattedServiceDates { get; set; }
+
+        // ADDED: Source line item information (MY line item from current Case)
+        // These fields are optional and backward compatible - existing code will ignore them
+        @AuraEnabled public Id sourceLineItemId { get; set; }
+        @AuraEnabled public String sourceLineItemName { get; set; }
+        @AuraEnabled public String sourceBillId { get; set; }
+        @AuraEnabled public Decimal sourceChargeAmount { get; set; }
 
         /**
          * @description Constructor with safe defaults
@@ -452,6 +460,131 @@ public with sharing class TRM_DuplicateDetectionModels {
             if (this.caseId != null) {
                 this.relatedCaseUrl = '/lightning/r/Case/' + this.caseId + '/view';
             }
+        }
+    }
+
+    /**
+     * @description Navigation Summary DTO for Case duplicate detection (lightweight)
+     * ADDED: For optimized modal load - NO line items, only counts
+     * Used for initial load to detect volume and choose loading strategy
+     * RENAMED to avoid conflict with existing getCaseDuplicateSummary method
+     */
+    public class DuplicateNavigationSummaryDTO {
+        @AuraEnabled public List<CaseSummary> caseSummaries { get; set; }
+        @AuraEnabled public List<BillSummary> billSummaries { get; set; }
+        @AuraEnabled public Integer totalLineItems { get; set; }
+        @AuraEnabled public Integer totalCases { get; set; }
+        @AuraEnabled public Integer totalBills { get; set; }
+
+        public DuplicateNavigationSummaryDTO() {
+            this.caseSummaries = new List<CaseSummary>();
+            this.billSummaries = new List<BillSummary>();
+            this.totalLineItems = 0;
+            this.totalCases = 0;
+            this.totalBills = 0;
+        }
+
+        public DuplicateNavigationSummaryDTO(List<CaseSummary> cases, List<BillSummary> bills) {
+            this.caseSummaries = cases;
+            this.billSummaries = bills;
+            this.totalCases = cases.size();
+            this.totalBills = bills.size();
+
+            // Calculate total line items
+            Integer total = 0;
+            for (CaseSummary cs : cases) {
+                total += cs.totalLineItems;
+            }
+            this.totalLineItems = total;
+        }
+    }
+
+    /**
+     * @description Case-level summary (lightweight)
+     * ADDED: For 3-level navigation (Cases → Bills → Line Items)
+     */
+    public class CaseSummary {
+        @AuraEnabled public Id caseId { get; set; }
+        @AuraEnabled public String caseNumber { get; set; }
+        @AuraEnabled public Integer billCount { get; set; }
+        @AuraEnabled public Integer totalLineItems { get; set; }
+        @AuraEnabled public Integer exactCount { get; set; }
+        @AuraEnabled public Integer potentialCount { get; set; }
+        @AuraEnabled public List<String> billIds { get; set; }
+
+        public CaseSummary(Id caseId) {
+            this.caseId = caseId;
+            this.billCount = 0;
+            this.totalLineItems = 0;
+            this.exactCount = 0;
+            this.potentialCount = 0;
+            this.billIds = new List<String>();
+        }
+
+        public void addBill(String billId) {
+            if (!this.billIds.contains(billId)) {
+                this.billIds.add(billId);
+                this.billCount = this.billIds.size();
+            }
+        }
+
+        public void increment(String matchType) {
+            this.totalLineItems++;
+            if (matchType == 'Exact') {
+                this.exactCount++;
+            } else if (matchType == 'Potential') {
+                this.potentialCount++;
+            }
+        }
+    }
+
+    /**
+     * @description Bill-level summary (lightweight)
+     * ADDED: For 3-level navigation (Cases → Bills → Line Items)
+     */
+    public class BillSummary {
+        @AuraEnabled public String billExternalId { get; set; }
+        @AuraEnabled public Id caseId { get; set; }
+        @AuraEnabled public Integer lineItemCount { get; set; }
+        @AuraEnabled public Integer exactCount { get; set; }
+        @AuraEnabled public Integer potentialCount { get; set; }
+
+        public BillSummary(String billExternalId) {
+            this.billExternalId = billExternalId;
+            this.lineItemCount = 0;
+            this.exactCount = 0;
+            this.potentialCount = 0;
+        }
+
+        public void increment(String matchType) {
+            this.lineItemCount++;
+            if (matchType == 'Exact') {
+                this.exactCount++;
+            } else if (matchType == 'Potential') {
+                this.potentialCount++;
+            }
+        }
+    }
+
+    /**
+     * @description Paginated line items response
+     * ADDED: For on-demand loading of line items
+     */
+    public class LineItemPageDTO {
+        @AuraEnabled public List<CaseMatchDTO> items { get; set; }
+        @AuraEnabled public Integer total { get; set; }
+        @AuraEnabled public Integer pageNumber { get; set; }
+        @AuraEnabled public Integer pageSize { get; set; }
+        @AuraEnabled public Integer totalPages { get; set; }
+        @AuraEnabled public Boolean hasMore { get; set; }
+
+        public LineItemPageDTO(List<CaseMatchDTO> items, Integer total, Integer pageNumber, Integer pageSize) {
+            this.items = items;
+            this.total = total;
+            this.pageNumber = pageNumber;
+            this.pageSize = pageSize;
+            this.totalPages = (Integer) Math.ceil((Decimal) total / (Decimal) pageSize);
+            this.hasMore = pageNumber < this.totalPages;
         }
     }
 }

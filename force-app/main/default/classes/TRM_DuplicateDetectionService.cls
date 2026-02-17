@@ -180,9 +180,12 @@ public with sharing class TRM_DuplicateDetectionService {
             Decimal minCharge = record.Charge__c - CHARGE_TOLERANCE;
             Decimal maxCharge = record.Charge__c + CHARGE_TOLERANCE;
 
+            // FIX: Added Bill__r.Id and Bill__r.Bill_Case_Data__c to prevent SOQL error
+            // when MatchDTO constructor accesses Bill relationship fields (line 88-95 in TRM_DuplicateDetectionModels)
             return [
                 SELECT Id, Name, CPT_HCPCS_NDC__c, Charge__c, Service_Start_Date__c,
-                       Service_End_Date__c, Bill__r.External_Id__c, Bill__r.Patient_Id__c,
+                       Service_End_Date__c, Bill__r.Id, Bill__r.External_Id__c,
+                       Bill__r.Patient_Id__c, Bill__r.Bill_Case_Data__c,
                        CreatedDate, CreatedBy.Name
                 FROM Bill_Line_Item__c
                 WHERE Bill__r.Patient_Id__c = :patientId
@@ -223,10 +226,13 @@ public with sharing class TRM_DuplicateDetectionService {
             // Calculate date range (±5 years, configurable)
             Date startRange = record.Service_Start_Date__c.addYears(-DEFAULT_DATE_WINDOW_YEARS);
             Date endRange = record.Service_Start_Date__c.addYears(DEFAULT_DATE_WINDOW_YEARS);
-            
+
+            // FIX: Added Bill__r.Id and Bill__r.Bill_Case_Data__c to prevent SOQL error
+            // when MatchDTO constructor accesses Bill relationship fields (line 88-95 in TRM_DuplicateDetectionModels)
             return [
                 SELECT Id, Name, CPT_HCPCS_NDC__c, Charge__c, Service_Start_Date__c,
-                       Service_End_Date__c, Bill__r.External_Id__c, Bill__r.Patient_Id__c,
+                       Service_End_Date__c, Bill__r.Id, Bill__r.External_Id__c,
+                       Bill__r.Patient_Id__c, Bill__r.Bill_Case_Data__c,
                        CreatedDate, CreatedBy.Name
                 FROM Bill_Line_Item__c
                 WHERE Bill__r.Patient_Id__c = :patientId

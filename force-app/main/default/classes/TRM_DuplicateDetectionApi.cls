@@ -747,6 +747,207 @@ public with sharing class TRM_DuplicateDetectionApi {
     }
 
     /**
+     * @description OPTIMIZED version - Get all duplicate matches for a Case with source line item info
+     * ADDED: V2 optimized for 4-level navigation (MY Line Items → Cases → Bills → Their Line Items)
+     * PERFORMANCE: No SOQL in loops, bulk queries only, respects governor limits
+     * ENHANCED: Includes source line item information for proper grouping
+     * @param caseId The Case record ID
+     * @return List<TRM_DuplicateDetectionModels.CaseMatchDTO> All duplicate matches with source info
+     */
+    @AuraEnabled(cacheable=true)
+    public static List<TRM_DuplicateDetectionModels.CaseMatchDTO> getCaseAllDuplicateMatchesV2(Id caseId) {
+        try {
+            // Input validation
+            if (caseId == null) {
+                throw new AuraHandledException('Case ID is required');
+            }
+
+            // Validate record ID is for Case
+            String objectType = caseId.getSObjectType().getDescribe().getName();
+            if (objectType != 'Case') {
+                throw new AuraHandledException('Invalid record type. Expected Case, got: ' + objectType);
+            }
+
+            List<TRM_DuplicateDetectionModels.CaseMatchDTO> allMatches =
+                new List<TRM_DuplicateDetectionModels.CaseMatchDTO>();
+
+            // Query Case with Bill relationship
+            List<Case> cases = [
+                SELECT Id, CaseNumber, BCN__c
+                FROM Case
+                WHERE Id = :caseId
+                WITH SECURITY_ENFORCED
+                LIMIT 1
+            ];
+
+            if (cases.isEmpty()) {
+                throw new AuraHandledException('Case not found or access denied');
+            }
+
+            Case caseRecord = cases[0];
+
+            // If no Bill associated, return empty list
+            if (caseRecord.BCN__c == null) {
+                return allMatches;
+            }
+
+            // Query Bill Line Items with duplicate status
+            List<Bill_Line_Item__c> lineItems = [
+                SELECT Id, Name, Duplicate_Status__c, Matching_Records__c,
+                       Charge__c, Service_Start_Date__c, Service_End_Date__c,
+                       CPT_HCPCS_NDC__c, CreatedDate, CreatedBy.Name,
+                       Bill__r.Id, Bill__r.External_Id__c, Bill__r.Patient_Id__c
+                FROM Bill_Line_Item__c
+                WHERE Bill__c = :caseRecord.BCN__c
+                AND Duplicate_Status__c IN ('Exact', 'Potential')
+                WITH SECURITY_ENFORCED
+                LIMIT 50000
+            ];
+
+            if (lineItems.isEmpty()) {
+                return allMatches;
+            }
+
+            // OPTIMIZATION: Collect all duplicate line item IDs in ONE pass (no loops)
+            Set<Id> duplicateLineItemIds = new Set<Id>();
+            for (Bill_Line_Item__c lineItem : lineItems) {
+                if (String.isBlank(lineItem.Matching_Records__c)) {
+                    continue;
+                }
+                try {
+                    List<Object> matches = (List<Object>) JSON.deserializeUntyped(lineItem.Matching_Records__c);
+                    for (Object match : matches) {
+                        Map<String, Object> matchMap = (Map<String, Object>) match;
+                        String recordId = (String) matchMap.get('recordId');
+                        if (String.isNotBlank(recordId)) {
+                            duplicateLineItemIds.add((Id) recordId);
+                        }
+                    }
+                } catch (Exception e) {
+                    // Skip invalid JSON
+                }
+            }
+
+            // OPTIMIZATION: Bulk query ALL duplicate line items and their Cases in ONE query
+            Map<Id, Id> lineItemToCaseMap = new Map<Id, Id>();
+            Map<Id, String> caseIdToNumberMap = new Map<Id, String>();
+
+            if (!duplicateLineItemIds.isEmpty()) {
+                // Query duplicate line items with their Bill and Case info in ONE query
+                List<Bill_Line_Item__c> duplicateLineItems = [
+                    SELECT Id, Bill__c, Bill__r.External_Id__c
+                    FROM Bill_Line_Item__c
+                    WHERE Id IN :duplicateLineItemIds
+                    WITH SECURITY_ENFORCED
+                ];
+
+                // Collect Bill IDs
+                Set<Id> billIds = new Set<Id>();
+                Map<Id, String> lineItemToBillExternalIdMap = new Map<Id, String>();
+                for (Bill_Line_Item__c dupItem : duplicateLineItems) {
+                    if (dupItem.Bill__c != null) {
+                        billIds.add(dupItem.Bill__c);
+                        lineItemToBillExternalIdMap.put(dupItem.Id, dupItem.Bill__r.External_Id__c);
+                    }
+                }
+
+                // OPTIMIZATION: Bulk query ALL Cases in ONE query
+                if (!billIds.isEmpty()) {
+                    List<Case> relatedCases = [
+                        SELECT Id, CaseNumber, BCN__c
+                        FROM Case
+                        WHERE BCN__c IN :billIds
+                        WITH SECURITY_ENFORCED
+                    ];
+
+                    // Build maps
+                    Map<Id, Id> billToCaseMap = new Map<Id, Id>();
+                    for (Case relatedCase : relatedCases) {
+                        if (relatedCase.BCN__c != null) {
+                            billToCaseMap.put(relatedCase.BCN__c, relatedCase.Id);
+                            caseIdToNumberMap.put(relatedCase.Id, relatedCase.CaseNumber);
+                        }
+                    }
+
+                    // Map Line Item ID to Case ID
+                    for (Bill_Line_Item__c dupItem : duplicateLineItems) {
+                        if (dupItem.Bill__c != null) {
+                            Id relatedCaseId = billToCaseMap.get(dupItem.Bill__c);
+                            if (relatedCaseId != null) {
+                                lineItemToCaseMap.put(dupItem.Id, relatedCaseId);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Process each line item's matching records
+            for (Bill_Line_Item__c lineItem : lineItems) {
+                if (String.isBlank(lineItem.Matching_Records__c)) {
+                    continue;
+                }
+
+                try {
+                    // Parse JSON matching records
+                    List<TRM_DuplicateDetectionModels.MatchDTO> matches =
+                        (List<TRM_DuplicateDetectionModels.MatchDTO>)
+                        JSON.deserialize(lineItem.Matching_Records__c,
+                            List<TRM_DuplicateDetectionModels.MatchDTO>.class);
+
+                    // Convert each match to CaseMatchDTO with BOTH source and target info
+                    for (TRM_DuplicateDetectionModels.MatchDTO match : matches) {
+                        TRM_DuplicateDetectionModels.CaseMatchDTO caseMatch =
+                            new TRM_DuplicateDetectionModels.CaseMatchDTO();
+
+                        // Copy base properties (THEIR line item - the duplicate)
+                        caseMatch.recordId = match.recordId;
+                        caseMatch.recordName = match.recordName;
+                        caseMatch.matchType = match.matchType;
+                        caseMatch.confidence = match.confidence;
+                        caseMatch.billExternalId = match.billExternalId;
+                        caseMatch.chargeAmount = match.chargeAmount;
+                        caseMatch.serviceStartDate = match.serviceStartDate;
+                        caseMatch.serviceEndDate = match.serviceEndDate;
+                        caseMatch.procedureCode = match.procedureCode;
+                        caseMatch.patientId = match.patientId;
+                        caseMatch.createdDate = match.createdDate;
+                        caseMatch.createdBy = match.createdBy;
+
+                        // Set Case information (where the duplicate is found)
+                        Id duplicateCaseId = lineItemToCaseMap.get(match.recordId);
+                        if (duplicateCaseId != null) {
+                            caseMatch.caseId = duplicateCaseId;
+                            caseMatch.caseNumber = caseIdToNumberMap.get(duplicateCaseId);
+                        }
+
+                        // ADDED: Set source line item information (MY line item)
+                        caseMatch.sourceLineItemId = lineItem.Id;
+                        caseMatch.sourceLineItemName = lineItem.Name;
+                        caseMatch.sourceBillId = lineItem.Bill__r.External_Id__c;
+                        caseMatch.sourceChargeAmount = lineItem.Charge__c;
+
+                        // Calculate derived display properties
+                        caseMatch.calculateDerivedValues();
+
+                        allMatches.add(caseMatch);
+                    }
+
+                } catch (JSONException jsonEx) {
+                    System.debug('TRM_DuplicateDetectionApi: JSON parsing error for line item ' +
+                               lineItem.Id + ': ' + jsonEx.getMessage());
+                    // Continue processing other line items
+                }
+            }
+
+            return allMatches;
+
+        } catch (Exception e) {
+            System.debug('TRM_DuplicateDetectionApi.getCaseAllDuplicateMatchesV2 error: ' + e.getMessage());
+            throw new AuraHandledException('Error retrieving Case duplicate matches: ' + e.getMessage());
+        }
+    }
+
+    /**
      * @description Get Bill Line Items with matching records for modal display
      * ADDED: For Bill-level duplicate details modal
      * @param billId The Bill record ID
@@ -791,6 +992,261 @@ public with sharing class TRM_DuplicateDetectionApi {
         } catch (Exception e) {
             System.debug('TRM_DuplicateDetectionApi.getBillLineItemsWithMatches error: ' + e.getMessage());
             throw new AuraHandledException('Error retrieving Bill line items with matches: ' + e.getMessage());
+        }
+    }
+
+    /**
+     * @description Get lightweight duplicate summary for a Case (optimized for large volumes)
+     * ADDED: For adaptive loading strategy - returns counts only, NO full line items
+     * Used for initial modal load to detect volume and choose loading strategy
+     * RENAMED to avoid conflict with existing getCaseDuplicateSummary method
+     *
+     * @param caseId The Case ID
+     * @return DuplicateNavigationSummaryDTO with Case and Bill summaries
+     */
+    @AuraEnabled(cacheable=true)
+    public static TRM_DuplicateDetectionModels.DuplicateNavigationSummaryDTO getCaseDuplicateNavigationSummary(Id caseId) {
+        try {
+            // Query Case and Bill
+            Case caseRecord = [
+                SELECT Id, CaseNumber, BCN__c
+                FROM Case
+                WHERE Id = :caseId
+                LIMIT 1
+            ];
+
+            if (caseRecord.BCN__c == null) {
+                return new TRM_DuplicateDetectionModels.DuplicateNavigationSummaryDTO();
+            }
+
+            // Query line items with duplicates (increased limit for large volumes)
+            // NOTE: Cannot filter on Matching_Records__c (Long Text Area) in WHERE clause - filter in Apex
+            List<Bill_Line_Item__c> lineItems = [
+                SELECT Id, Name, Duplicate_Status__c, Matching_Records__c
+                FROM Bill_Line_Item__c
+                WHERE Bill__c = :caseRecord.BCN__c
+                AND Duplicate_Status__c IN ('Exact', 'Potential')
+                LIMIT 50000
+            ];
+
+            if (lineItems.isEmpty()) {
+                return new TRM_DuplicateDetectionModels.DuplicateNavigationSummaryDTO();
+            }
+
+            // Maps for aggregation
+            Map<Id, TRM_DuplicateDetectionModels.CaseSummary> caseSummaryMap = new Map<Id, TRM_DuplicateDetectionModels.CaseSummary>();
+            Map<String, TRM_DuplicateDetectionModels.BillSummary> billSummaryMap = new Map<String, TRM_DuplicateDetectionModels.BillSummary>();
+
+            // Process each line item
+            for (Bill_Line_Item__c lineItem : lineItems) {
+                if (String.isBlank(lineItem.Matching_Records__c)) {
+                    continue;
+                }
+
+                // Lightweight JSON parsing - extract IDs only (no full deserialization)
+                List<Object> matches = (List<Object>) JSON.deserializeUntyped(lineItem.Matching_Records__c);
+
+                for (Object match : matches) {
+                    Map<String, Object> matchMap = (Map<String, Object>) match;
+                    String recordId = (String) matchMap.get('recordId');
+                    String matchType = (String) matchMap.get('matchType');
+                    String billExternalId = (String) matchMap.get('billExternalId');
+
+                    if (String.isBlank(recordId)) {
+                        continue;
+                    }
+
+                    // Query the matching line item to get its Case ID
+                    List<Bill_Line_Item__c> matchingItems = [
+                        SELECT Id, Bill__r.Bill_Case_Data__c, Bill__r.Bill_Case_Data__r.CaseNumber
+                        FROM Bill_Line_Item__c
+                        WHERE Id = :recordId
+                        LIMIT 1
+                    ];
+
+                    if (matchingItems.isEmpty() || matchingItems[0].Bill__r.Bill_Case_Data__c == null) {
+                        continue;
+                    }
+
+                    Id matchCaseId = matchingItems[0].Bill__r.Bill_Case_Data__c;
+                    String matchCaseNumber = matchingItems[0].Bill__r.Bill_Case_Data__r.CaseNumber;
+
+                    // Aggregate by Case
+                    if (!caseSummaryMap.containsKey(matchCaseId)) {
+                        TRM_DuplicateDetectionModels.CaseSummary cs = new TRM_DuplicateDetectionModels.CaseSummary(matchCaseId);
+                        cs.caseNumber = matchCaseNumber;
+                        caseSummaryMap.put(matchCaseId, cs);
+                    }
+                    caseSummaryMap.get(matchCaseId).increment(matchType);
+                    caseSummaryMap.get(matchCaseId).addBill(billExternalId);
+
+                    // Aggregate by Bill
+                    String billKey = matchCaseId + '_' + billExternalId;
+                    if (!billSummaryMap.containsKey(billKey)) {
+                        TRM_DuplicateDetectionModels.BillSummary bs = new TRM_DuplicateDetectionModels.BillSummary(billExternalId);
+                        bs.caseId = matchCaseId;
+                        billSummaryMap.put(billKey, bs);
+                    }
+                    billSummaryMap.get(billKey).increment(matchType);
+                }
+            }
+
+            // Convert maps to lists
+            List<TRM_DuplicateDetectionModels.CaseSummary> caseSummaries = caseSummaryMap.values();
+            List<TRM_DuplicateDetectionModels.BillSummary> billSummaries = billSummaryMap.values();
+
+            return new TRM_DuplicateDetectionModels.DuplicateNavigationSummaryDTO(caseSummaries, billSummaries);
+
+        } catch (Exception e) {
+            System.debug('TRM_DuplicateDetectionApi.getCaseDuplicateNavigationSummary error: ' + e.getMessage());
+            throw new AuraHandledException('Error retrieving duplicate navigation summary: ' + e.getMessage());
+        }
+    }
+
+    /**
+     * @description Get paginated line items for a specific Bill (on-demand loading)
+     * ADDED: For 3-level navigation - loads only one page at a time
+     *
+     * @param caseId The Case ID
+     * @param billExternalId The Bill External ID to filter by
+     * @param pageNumber Page number (1-based)
+     * @param pageSize Items per page
+     * @return LineItemPageDTO with paginated items
+     */
+    @AuraEnabled
+    public static TRM_DuplicateDetectionModels.LineItemPageDTO getLineItemsForBill(
+        Id caseId,
+        String billExternalId,
+        Integer pageNumber,
+        Integer pageSize
+    ) {
+        try {
+            // Default page size
+            if (pageSize == null || pageSize <= 0) {
+                pageSize = 50;
+            }
+            if (pageNumber == null || pageNumber <= 0) {
+                pageNumber = 1;
+            }
+
+            // Calculate offset
+            Integer offset = (pageNumber - 1) * pageSize;
+
+            // Query Case and Bill
+            Case caseRecord = [
+                SELECT Id, CaseNumber, BCN__c
+                FROM Case
+                WHERE Id = :caseId
+                LIMIT 1
+            ];
+
+            if (caseRecord.BCN__c == null) {
+                return new TRM_DuplicateDetectionModels.LineItemPageDTO(
+                    new List<TRM_DuplicateDetectionModels.CaseMatchDTO>(),
+                    0,
+                    pageNumber,
+                    pageSize
+                );
+            }
+
+            // Get total count (aggregate query - fast)
+            // NOTE: Cannot filter on Matching_Records__c (Long Text Area) - will filter in Apex
+            Integer totalCount = [
+                SELECT COUNT()
+                FROM Bill_Line_Item__c
+                WHERE Bill__c = :caseRecord.BCN__c
+                AND Duplicate_Status__c IN ('Exact', 'Potential')
+            ];
+
+            if (totalCount == 0) {
+                return new TRM_DuplicateDetectionModels.LineItemPageDTO(
+                    new List<TRM_DuplicateDetectionModels.CaseMatchDTO>(),
+                    0,
+                    pageNumber,
+                    pageSize
+                );
+            }
+
+            // Query paginated line items
+            List<Bill_Line_Item__c> lineItems = [
+                SELECT Id, Name, Duplicate_Status__c, Matching_Records__c
+                FROM Bill_Line_Item__c
+                WHERE Bill__c = :caseRecord.BCN__c
+                AND Duplicate_Status__c IN ('Exact', 'Potential')
+                ORDER BY Name
+                LIMIT :pageSize
+                OFFSET :offset
+            ];
+
+            // Convert to DTOs (same logic as getCaseAllDuplicateMatches)
+            List<TRM_DuplicateDetectionModels.CaseMatchDTO> results = new List<TRM_DuplicateDetectionModels.CaseMatchDTO>();
+
+            for (Bill_Line_Item__c lineItem : lineItems) {
+                if (String.isBlank(lineItem.Matching_Records__c)) {
+                    continue;
+                }
+
+                // Deserialize matches
+                List<TRM_DuplicateDetectionModels.MatchDTO> matches =
+                    (List<TRM_DuplicateDetectionModels.MatchDTO>) JSON.deserialize(
+                        lineItem.Matching_Records__c,
+                        List<TRM_DuplicateDetectionModels.MatchDTO>.class
+                    );
+
+                // Filter by billExternalId if provided
+                for (TRM_DuplicateDetectionModels.MatchDTO match : matches) {
+                    if (String.isNotBlank(billExternalId) && match.billExternalId != billExternalId) {
+                        continue;
+                    }
+
+                    // Query matching line item to get Case info
+                    List<Bill_Line_Item__c> matchingItems = [
+                        SELECT Id, Bill__r.Bill_Case_Data__c, Bill__r.Bill_Case_Data__r.CaseNumber
+                        FROM Bill_Line_Item__c
+                        WHERE Id = :match.recordId
+                        LIMIT 1
+                    ];
+
+                    if (!matchingItems.isEmpty() && matchingItems[0].Bill__r.Bill_Case_Data__c != null) {
+                        TRM_DuplicateDetectionModels.CaseMatchDTO caseMatch =
+                            new TRM_DuplicateDetectionModels.CaseMatchDTO();
+
+                        // Copy base properties from MatchDTO
+                        caseMatch.recordId = match.recordId;
+                        caseMatch.recordName = match.recordName;
+                        caseMatch.matchType = match.matchType;
+                        caseMatch.confidence = match.confidence;
+                        caseMatch.billExternalId = match.billExternalId;
+                        caseMatch.chargeAmount = match.chargeAmount;
+                        caseMatch.serviceStartDate = match.serviceStartDate;
+                        caseMatch.serviceEndDate = match.serviceEndDate;
+                        caseMatch.procedureCode = match.procedureCode;
+                        caseMatch.patientId = match.patientId;
+                        caseMatch.createdDate = match.createdDate;
+                        caseMatch.createdBy = match.createdBy;
+
+                        // Set Case information
+                        caseMatch.caseId = matchingItems[0].Bill__r.Bill_Case_Data__c;
+                        caseMatch.caseNumber = matchingItems[0].Bill__r.Bill_Case_Data__r.CaseNumber;
+
+                        // Calculate derived display properties
+                        caseMatch.calculateDerivedValues();
+
+                        results.add(caseMatch);
+                    }
+                }
+            }
+
+            return new TRM_DuplicateDetectionModels.LineItemPageDTO(
+                results,
+                totalCount,
+                pageNumber,
+                pageSize
+            );
+
+        } catch (Exception e) {
+            System.debug('TRM_DuplicateDetectionApi.getLineItemsForBill error: ' + e.getMessage());
+            throw new AuraHandledException('Error retrieving paginated line items: ' + e.getMessage());
         }
     }
 }

@@ -39,223 +39,536 @@
                                 Unable to load duplicate matches
                             </h2>
                             <p class="slds-m-top_x-small">
-                                {error.body.message}
+                                {errorMessage}
                             </p>
                         </div>
                     </template>
 
                     <!-- Main Content -->
                     <template if:false={isLoading}>
-                        <!-- Toolbar -->
-                        <div class="slds-grid slds-grid_align-spread slds-m-bottom_medium">
-                            <div class="slds-col">
-                                <lightning-button-group>
-                                    <lightning-button
-                                        label={filtersToggleLabel}
-                                        icon-name={filtersToggleIcon}
-                                        onclick={handleFiltersToggle}
-                                        variant="neutral">
-                                    </lightning-button>
-                                    <lightning-button
-                                        label="Clear Filters"
-                                        icon-name="utility:clear"
-                                        onclick={handleClearFilters}
-                                        variant="neutral">
-                                    </lightning-button>
-                                </lightning-button-group>
-                            </div>
-                        </div>
+                        <!-- Breadcrumb Navigation (UPDATED for 4-level navigation) -->
+                        <template if:true={showBreadcrumb}>
+                            <nav class="slds-breadcrumb slds-m-bottom_medium" role="navigation" aria-label="Breadcrumb">
+                                <ol class="slds-breadcrumb__list">
+                                    <!-- Level 1: MY Line Items -->
+                                    <li class="slds-breadcrumb__item">
+                                        <template if:true={isMyLineItemsView}>
+                                            <span class="slds-breadcrumb__item-text">My Line Items</span>
+                                        </template>
+                                        <template if:false={isMyLineItemsView}>
+                                            <a href="javascript:void(0);" onclick={handleBackToMyLineItems}>My Line Items</a>
+                                        </template>
+                                    </li>
 
-                        <!-- Filters Panel -->
-                        <template if:true={showFilters}>
-                            <div class="slds-card slds-m-bottom_medium">
-                                <div class="slds-card__header">
-                                    <h3 class="slds-card__header-title">Filters & Sorting</h3>
-                                </div>
-                                <div class="slds-card__body slds-p-horizontal_medium">
-                                    <div class="slds-grid slds-wrap slds-gutters">
-                                        <!-- Match Type Filter -->
-                                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
-                                            <lightning-combobox
-                                                name="matchType"
-                                                label="Match Type"
-                                                value={selectedMatchType}
-                                                placeholder="Select match type"
-                                                options={matchTypeOptions}
-                                                onchange={handleMatchTypeChange}>
-                                            </lightning-combobox>
-                                        </div>
+                                    <!-- Level 2: Matching Cases -->
+                                    <template if:true={selectedMyLineItemId}>
+                                        <li class="slds-breadcrumb__item">
+                                            <template if:true={isMatchingCasesView}>
+                                                <span class="slds-breadcrumb__item-text">Matching Cases</span>
+                                            </template>
+                                            <template if:false={isMatchingCasesView}>
+                                                <a href="javascript:void(0);" onclick={handleBackToMatchingCases}>Matching Cases</a>
+                                            </template>
+                                        </li>
+                                    </template>
 
-                                        <!-- Sort Field -->
-                                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
-                                            <lightning-combobox
-                                                name="sortField"
-                                                label="Sort By"
-                                                value={sortField}
-                                                placeholder="Select sort field"
-                                                options={sortFieldOptions}
-                                                onchange={handleSortFieldChange}>
-                                            </lightning-combobox>
-                                        </div>
+                                    <!-- Level 3: Bills -->
+                                    <template if:true={selectedCaseId}>
+                                        <li class="slds-breadcrumb__item">
+                                            <template if:true={isBillView}>
+                                                <span class="slds-breadcrumb__item-text">Bills</span>
+                                            </template>
+                                            <template if:false={isBillView}>
+                                                <a href="javascript:void(0);" onclick={handleBackToBills}>Bills</a>
+                                            </template>
+                                        </li>
+                                    </template>
 
-                                        <!-- Sort Direction -->
-                                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
-                                            <div class="slds-form-element">
-                                                <label class="slds-form-element__label">Sort Direction</label>
-                                                <div class="slds-form-element__control">
-                                                    <lightning-button
-                                                        label={sortDirection}
-                                                        icon-name="utility:arrowup"
-                                                        onclick={handleSortDirectionToggle}
-                                                        variant="neutral"
-                                                        class="sort-direction-button">
-                                                    </lightning-button>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Search -->
-                                        <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-3">
-                                            <lightning-input
-                                                data-id="search"
-                                                type="search"
-                                                label="Search"
-                                                placeholder="Search by record name, bill ID, procedure code, or patient ID..."
-                                                value={searchTerm}
-                                                onchange={handleSearchChange}>
-                                            </lightning-input>
-                                        </div>
-
-                                        <!-- Group By -->
-                                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
-                                            <div class="slds-form-element">
-                                                <label class="slds-form-element__label">Display Options</label>
-                                                <div class="slds-form-element__control">
-                                                    <lightning-input
-                                                        type="checkbox"
-                                                        label="Group by Match Type"
-                                                        checked={groupByMatchType}
-                                                        onchange={handleGroupByToggle}>
-                                                    </lightning-input>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                    <!-- Level 4: Their Line Items -->
+                                    <template if:true={selectedBillId}>
+                                        <li class="slds-breadcrumb__item">
+                                            <span class="slds-breadcrumb__item-text">Their Line Items</span>
+                                        </li>
+                                    </template>
+                                </ol>
+                            </nav>
                         </template>
 
-                        <!-- No Matches State -->
-                        <template if:false={hasMatches}>
+                        <!-- Empty State (ADDED) -->
+                        <template if:true={isEmpty}>
                             <div class="slds-align_absolute-center slds-p-vertical_large">
                                 <lightning-icon icon-name="utility:search" size="large" variant="neutral"></lightning-icon>
                                 <h3 class="slds-text-heading_medium slds-m-top_medium">No duplicate matches found</h3>
                                 <p class="slds-text-body_regular slds-text-color_weak slds-m-top_small">
-                                    Try adjusting your filters or search criteria.
+                                    This Case has no duplicate line items.
                                 </p>
                             </div>
                         </template>
 
-                        <!-- Matches Display -->
-                        <template if:true={hasMatches}>
-                            <template for:each={groupedMatches} for:item="group">
-                                <div key={group.groupTitle} class={group.groupClass}>
-                                    <!-- Group Header -->
-                                    <template if:true={group.groupTitle}>
-                                        <div class="slds-section slds-is-open">
-                                            <h3 class="slds-section__title slds-theme_shade">
-                                                <span class="slds-truncate slds-p-horizontal_small" title={group.groupTitle}>
-                                                    {group.groupTitle}
-                                                </span>
-                                            </h3>
-                                        </div>
-                                    </template>
-
-                                    <!-- Matches List -->
-                                    <div class="matches-container">
-                                        <template for:each={group.matches} for:item="match">
-                                            <div key={match.recordId} class="match-card slds-card slds-m-bottom_small">
-                                                <div class="slds-card__body slds-p-around_small">
-                                                    <div class="slds-grid slds-grid_align-spread">
-                                                        <!-- Match Details -->
-                                                        <div class="slds-col slds-size_3-of-4">
-                                                            <div class="slds-grid slds-wrap slds-gutters_x-small">
-                                                                <!-- Record Name & Match Type -->
-                                                                <div class="slds-col slds-size_1-of-1">
-                                                                    <h4 class="slds-text-heading_small">
-                                                                        <lightning-button
-                                                                            label={match.recordName}
-                                                                            variant="base"
-                                                                            data-record-id={match.recordId}
-                                                                            onclick={handleNavigateToLineItem}
-                                                                            class="record-link">
-                                                                        </lightning-button>
-                                                                        <lightning-badge
-                                                                            label={match.matchTypeLabel}
-                                                                            class="slds-m-left_x-small match-type-badge">
-                                                                        </lightning-badge>
-                                                                    </h4>
-                                                                </div>
-
-                                                                <!-- Details Grid -->
-                                                                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
-                                                                    <div class="detail-item">
-                                                                        <span class="detail-label">Confidence:</span>
-                                                                        <span class="detail-value">{match.confidenceLabel}</span>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
-                                                                    <div class="detail-item">
-                                                                        <span class="detail-label">Charge:</span>
-                                                                        <span class="detail-value">{match.formattedChargeAmount}</span>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
-                                                                    <div class="detail-item">
-                                                                        <span class="detail-label">Service Date:</span>
-                                                                        <span class="detail-value">{match.formattedServiceDates}</span>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
-                                                                    <div class="detail-item">
-                                                                        <span class="detail-label">Procedure:</span>
-                                                                        <span class="detail-value">{match.procedureCode}</span>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
-                                                                    <div class="detail-item">
-                                                                        <span class="detail-label">Bill ID:</span>
-                                                                        <span class="detail-value">{match.billExternalId}</span>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
-                                                                    <div class="detail-item">
-                                                                        <span class="detail-label">Patient:</span>
-                                                                        <span class="detail-value">{match.patientId}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
+                        <!-- LEVEL 1: MY LINE ITEMS VIEW (4-level navigation) -->
+                        <template if:true={isMyLineItemsView}>
+                            <div class="my-line-items-view">
+                                <div class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                                    {myLineItemSummaries.length} of your line items have duplicates in other Cases
+                                </div>
+                                <template for:each={myLineItemSummaries} for:item="myLineItem">
+                                    <div key={myLineItem.myLineItemId} class="slds-card slds-m-bottom_small">
+                                        <div class="slds-card__body slds-p-around_small">
+                                            <div class="slds-grid slds-grid_align-spread">
+                                                <div class="slds-col slds-size_3-of-4">
+                                                    <h4 class="slds-text-heading_small slds-m-bottom_x-small">
+                                                        💊 {myLineItem.myLineItemName}
+                                                    </h4>
+                                                    <div class="slds-grid slds-wrap slds-gutters_x-small">
+                                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-5">
+                                                            <span class="detail-label">Bill:</span>
+                                                            <span class="detail-value">{myLineItem.myBillId}</span>
                                                         </div>
-
-                                                        <!-- Actions -->
-                                                        <div class="slds-col slds-size_1-of-4 slds-text-align_right">
-                                                            <!-- RAY FEEDBACK #1: Navigate to Case instead of Line Item -->
-                                                            <lightning-button
-                                                                label="View Case"
-                                                                variant="neutral"
-                                                                size="small"
-                                                                data-case-id={match.caseId}
-                                                                onclick={handleNavigateToCase}
-                                                                class="slds-m-bottom_x-small">
-                                                            </lightning-button>
+                                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-5">
+                                                            <span class="detail-label">Charge:</span>
+                                                            <span class="detail-value">{myLineItem.formattedChargeAmount}</span>
+                                                        </div>
+                                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-5">
+                                                            <span class="detail-label">Found in Cases:</span>
+                                                            <span class="detail-value">{myLineItem.totalMatchingCases}</span>
+                                                        </div>
+                                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-5">
+                                                            <span class="detail-label">Exact:</span>
+                                                            <span class="detail-value">{myLineItem.exactCount}</span>
+                                                        </div>
+                                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-5">
+                                                            <span class="detail-label">Potential:</span>
+                                                            <span class="detail-value">{myLineItem.potentialCount}</span>
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <div class="slds-col slds-size_1-of-4 slds-text-align_right">
+                                                    <lightning-button
+                                                        label="View Matching Cases"
+                                                        variant="brand"
+                                                        size="small"
+                                                        data-id={myLineItem.myLineItemId}
+                                                        onclick={handleViewMatchingCases}>
+                                                    </lightning-button>
+                                                </div>
                                             </div>
-                                        </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- LEVEL 2: MATCHING CASES VIEW (4-level navigation) -->
+                        <template if:true={isMatchingCasesView}>
+                            <div class="matching-cases-view">
+                                <div class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                                    Found in {caseSummaries.length} Case(s)
+                                </div>
+                                <template for:each={caseSummaries} for:item="caseSummary">
+                                    <div key={caseSummary.caseId} class="slds-card slds-m-bottom_small">
+                                        <div class="slds-card__body slds-p-around_small">
+                                            <div class="slds-grid slds-grid_align-spread">
+                                                <div class="slds-col slds-size_3-of-4">
+                                                    <h4 class="slds-text-heading_small slds-m-bottom_x-small">
+                                                        📋 Case: {caseSummary.caseNumber}
+                                                    </h4>
+                                                    <div class="slds-grid slds-wrap slds-gutters_x-small">
+                                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                            <span class="detail-label">Bills:</span>
+                                                            <span class="detail-value">{caseSummary.billCount}</span>
+                                                        </div>
+                                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                            <span class="detail-label">Matches:</span>
+                                                            <span class="detail-value">{caseSummary.matchCount}</span>
+                                                        </div>
+                                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                            <span class="detail-label">Exact:</span>
+                                                            <span class="detail-value">{caseSummary.exactCount}</span>
+                                                        </div>
+                                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                            <span class="detail-label">Potential:</span>
+                                                            <span class="detail-value">{caseSummary.potentialCount}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="slds-col slds-size_1-of-4 slds-text-align_right">
+                                                    <lightning-button
+                                                        label="View Bills"
+                                                        variant="brand"
+                                                        size="small"
+                                                        data-id={caseSummary.caseId}
+                                                        onclick={handleViewBillsForCase}>
+                                                    </lightning-button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- LEVEL 3: BILLS VIEW (LEGACY - kept for backward compatibility) -->
+                        <template if:true={isCaseView}>
+                            <div class="cases-view">
+                                <div class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                                    {caseSummaries.length} Case(s) with duplicate matches
+                                </div>
+                                <template for:each={caseSummaries} for:item="caseSummary">
+                                    <div key={caseSummary.caseId} class="slds-card slds-m-bottom_small">
+                                        <div class="slds-card__body slds-p-around_small">
+                                            <div class="slds-grid slds-grid_align-spread">
+                                                <div class="slds-col slds-size_3-of-4">
+                                                    <h4 class="slds-text-heading_small slds-m-bottom_x-small">
+                                                        📋 Case: {caseSummary.caseNumber}
+                                                    </h4>
+                                                    <div class="slds-grid slds-wrap slds-gutters_x-small">
+                                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                            <span class="detail-label">Bills:</span>
+                                                            <span class="detail-value">{caseSummary.billCount}</span>
+                                                        </div>
+                                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                            <span class="detail-label">Line Items:</span>
+                                                            <span class="detail-value">{caseSummary.totalLineItems}</span>
+                                                        </div>
+                                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                            <span class="detail-label">Exact:</span>
+                                                            <span class="detail-value">{caseSummary.exactCount}</span>
+                                                        </div>
+                                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                            <span class="detail-label">Potential:</span>
+                                                            <span class="detail-value">{caseSummary.potentialCount}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="slds-col slds-size_1-of-4 slds-text-align_right">
+                                                    <lightning-button
+                                                        label="View Bills"
+                                                        variant="brand"
+                                                        size="small"
+                                                        data-case-id={caseSummary.caseId}
+                                                        onclick={handleViewBills}>
+                                                    </lightning-button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- LEVEL 3: BILLS VIEW (UPDATED for 4-level navigation) -->
+                        <template if:true={isBillView}>
+                            <div class="bills-view">
+                                <div class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                                    {currentBillSummaries.length} Bill(s) with duplicate matches
+                                </div>
+                                <template for:each={currentBillSummaries} for:item="billSummary">
+                                    <div key={billSummary.billExternalId} class="slds-card slds-m-bottom_small">
+                                        <div class="slds-card__body slds-p-around_small">
+                                            <div class="slds-grid slds-grid_align-spread">
+                                                <div class="slds-col slds-size_3-of-4">
+                                                    <h4 class="slds-text-heading_small slds-m-bottom_x-small">
+                                                        📄 Bill: {billSummary.billExternalId}
+                                                    </h4>
+                                                    <div class="slds-grid slds-wrap slds-gutters_x-small">
+                                                        <div class="slds-col slds-size_1-of-3">
+                                                            <span class="detail-label">Line Items:</span>
+                                                            <span class="detail-value">{billSummary.lineItemCount}</span>
+                                                        </div>
+                                                        <div class="slds-col slds-size_1-of-3">
+                                                            <span class="detail-label">Exact:</span>
+                                                            <span class="detail-value">{billSummary.exactCount}</span>
+                                                        </div>
+                                                        <div class="slds-col slds-size_1-of-3">
+                                                            <span class="detail-label">Potential:</span>
+                                                            <span class="detail-value">{billSummary.potentialCount}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="slds-col slds-size_1-of-4 slds-text-align_right">
+                                                    <lightning-button
+                                                        label="View Line Items"
+                                                        variant="brand"
+                                                        size="small"
+                                                        data-id={billSummary.billExternalId}
+                                                        onclick={handleViewTheirLineItems}>
+                                                    </lightning-button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- LEVEL 4: THEIR LINE ITEMS VIEW (4-level navigation) -->
+                        <template if:true={isTheirLineItemsView}>
+                            <div class="line-items-view">
+                                <!-- Pagination Header -->
+                                <div class="slds-grid slds-grid_align-spread slds-m-bottom_small">
+                                    <div class="slds-col">
+                                        <div class="slds-text-body_small slds-text-color_weak">
+                                            {paginationInfo}
+                                        </div>
+                                    </div>
+                                    <div class="slds-col slds-text-align_right">
+                                        <lightning-button-group>
+                                            <lightning-button
+                                                label="Previous"
+                                                icon-name="utility:chevronleft"
+                                                onclick={handlePreviousPage}
+                                                disabled={isFirstPage}
+                                                size="small">
+                                            </lightning-button>
+                                            <lightning-button
+                                                label="Next"
+                                                icon-name="utility:chevronright"
+                                                icon-position="right"
+                                                onclick={handleNextPage}
+                                                disabled={isLastPage}
+                                                size="small">
+                                            </lightning-button>
+                                        </lightning-button-group>
                                     </div>
                                 </div>
-                            </template>
+
+                                <!-- Line Items List -->
+                                <template if:true={hasMatches}>
+                                    <template for:each={currentPageItems} for:item="match">
+                                        <div key={match.recordId} class="match-card slds-card slds-m-bottom_small">
+                                            <div class="slds-card__body slds-p-around_small">
+                                                <div class="slds-grid slds-grid_align-spread">
+                                                    <!-- Match Details -->
+                                                    <div class="slds-col slds-size_3-of-4">
+                                                        <div class="slds-grid slds-wrap slds-gutters_x-small">
+                                                            <!-- Record Name & Match Type -->
+                                                            <div class="slds-col slds-size_1-of-1">
+                                                                <h4 class="slds-text-heading_small">
+                                                                    <lightning-button
+                                                                        label={match.recordName}
+                                                                        variant="base"
+                                                                        data-record-id={match.recordId}
+                                                                        onclick={handleNavigateToLineItem}
+                                                                        class="record-link">
+                                                                    </lightning-button>
+                                                                    <lightning-badge
+                                                                        label={match.matchTypeLabel}
+                                                                        class="slds-m-left_x-small match-type-badge">
+                                                                    </lightning-badge>
+                                                                </h4>
+                                                            </div>
+
+                                                            <!-- Details Grid -->
+                                                            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                                <div class="detail-item">
+                                                                    <span class="detail-label">Confidence:</span>
+                                                                    <span class="detail-value">{match.confidenceLabel}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                                <div class="detail-item">
+                                                                    <span class="detail-label">Charge:</span>
+                                                                    <span class="detail-value">{match.formattedChargeAmount}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                                <div class="detail-item">
+                                                                    <span class="detail-label">Service Date:</span>
+                                                                    <span class="detail-value">{match.formattedServiceDates}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                                <div class="detail-item">
+                                                                    <span class="detail-label">Procedure:</span>
+                                                                    <span class="detail-value">{match.procedureCode}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                                <div class="detail-item">
+                                                                    <span class="detail-label">Bill ID:</span>
+                                                                    <span class="detail-value">{match.billExternalId}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                                <div class="detail-item">
+                                                                    <span class="detail-label">Patient:</span>
+                                                                    <span class="detail-value">{match.patientId}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Actions -->
+                                                    <div class="slds-col slds-size_1-of-4 slds-text-align_right">
+                                                        <lightning-button
+                                                            label="View Case"
+                                                            variant="neutral"
+                                                            size="small"
+                                                            data-case-id={match.caseId}
+                                                            onclick={handleNavigateToCase}
+                                                            class="slds-m-bottom_x-small">
+                                                        </lightning-button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </template>
+
+                                <!-- No Items State -->
+                                <template if:false={hasMatches}>
+                                    <div class="slds-align_absolute-center slds-p-vertical_large">
+                                        <lightning-icon icon-name="utility:search" size="large" variant="neutral"></lightning-icon>
+                                        <h3 class="slds-text-heading_medium slds-m-top_medium">No line items found</h3>
+                                    </div>
+                                </template>
+
+                                <!-- Pagination Footer -->
+                                <template if:true={hasMatches}>
+                                    <div class="slds-grid slds-grid_align-center slds-m-top_small">
+                                        <div class="slds-col">
+                                            <div class="slds-text-align_center slds-text-body_small slds-text-color_weak">
+                                                Page {currentPage} of {totalPages}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- LEGACY: LINE ITEMS VIEW (3-level navigation - backward compatibility) -->
+                        <template if:true={isLineItemView}>
+                            <div class="line-items-view">
+                                <!-- Pagination Header -->
+                                <div class="slds-grid slds-grid_align-spread slds-m-bottom_small">
+                                    <div class="slds-col">
+                                        <div class="slds-text-body_small slds-text-color_weak">
+                                            {paginationInfo}
+                                        </div>
+                                    </div>
+                                    <div class="slds-col slds-text-align_right">
+                                        <lightning-button-group>
+                                            <lightning-button
+                                                label="Previous"
+                                                icon-name="utility:chevronleft"
+                                                onclick={handlePreviousPage}
+                                                disabled={isFirstPage}
+                                                size="small">
+                                            </lightning-button>
+                                            <lightning-button
+                                                label="Next"
+                                                icon-name="utility:chevronright"
+                                                icon-position="right"
+                                                onclick={handleNextPage}
+                                                disabled={isLastPage}
+                                                size="small">
+                                            </lightning-button>
+                                        </lightning-button-group>
+                                    </div>
+                                </div>
+
+                                <!-- Line Items List -->
+                                <template if:true={hasMatches}>
+                                    <template for:each={currentPageItems} for:item="match">
+                                        <div key={match.recordId} class="match-card slds-card slds-m-bottom_small">
+                                            <div class="slds-card__body slds-p-around_small">
+                                                <div class="slds-grid slds-grid_align-spread">
+                                                    <!-- Match Details -->
+                                                    <div class="slds-col slds-size_3-of-4">
+                                                        <div class="slds-grid slds-wrap slds-gutters_x-small">
+                                                            <!-- Record Name & Match Type -->
+                                                            <div class="slds-col slds-size_1-of-1">
+                                                                <h4 class="slds-text-heading_small">
+                                                                    <lightning-button
+                                                                        label={match.recordName}
+                                                                        variant="base"
+                                                                        data-record-id={match.recordId}
+                                                                        onclick={handleNavigateToLineItem}
+                                                                        class="record-link">
+                                                                    </lightning-button>
+                                                                    <lightning-badge
+                                                                        label={match.matchTypeLabel}
+                                                                        class="slds-m-left_x-small match-type-badge">
+                                                                    </lightning-badge>
+                                                                </h4>
+                                                            </div>
+
+                                                            <!-- Details Grid -->
+                                                            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                                <div class="detail-item">
+                                                                    <span class="detail-label">Confidence:</span>
+                                                                    <span class="detail-value">{match.confidenceLabel}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                                <div class="detail-item">
+                                                                    <span class="detail-label">Charge:</span>
+                                                                    <span class="detail-value">{match.formattedChargeAmount}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                                <div class="detail-item">
+                                                                    <span class="detail-label">Service Date:</span>
+                                                                    <span class="detail-value">{match.formattedServiceDates}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                                <div class="detail-item">
+                                                                    <span class="detail-label">Procedure:</span>
+                                                                    <span class="detail-value">{match.procedureCode}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                                <div class="detail-item">
+                                                                    <span class="detail-label">Bill ID:</span>
+                                                                    <span class="detail-value">{match.billExternalId}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                                                <div class="detail-item">
+                                                                    <span class="detail-label">Patient:</span>
+                                                                    <span class="detail-value">{match.patientId}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Actions -->
+                                                    <div class="slds-col slds-size_1-of-4 slds-text-align_right">
+                                                        <lightning-button
+                                                            label="View Case"
+                                                            variant="neutral"
+                                                            size="small"
+                                                            data-case-id={match.caseId}
+                                                            onclick={handleNavigateToCase}
+                                                            class="slds-m-bottom_x-small">
+                                                        </lightning-button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </template>
+
+                                <!-- No Items State -->
+                                <template if:false={hasMatches}>
+                                    <div class="slds-align_absolute-center slds-p-vertical_large">
+                                        <lightning-icon icon-name="utility:search" size="large" variant="neutral"></lightning-icon>
+                                        <h3 class="slds-text-heading_medium slds-m-top_medium">No line items found</h3>
+                                    </div>
+                                </template>
+
+                                <!-- Pagination Footer -->
+                                <template if:true={hasMatches}>
+                                    <div class="slds-grid slds-grid_align-center slds-m-top_small">
+                                        <div class="slds-col">
+                                            <div class="slds-text-align_center slds-text-body_small slds-text-color_weak">
+                                                Page {currentPage} of {totalPages}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
                         </template>
                     </template>
                 </div>

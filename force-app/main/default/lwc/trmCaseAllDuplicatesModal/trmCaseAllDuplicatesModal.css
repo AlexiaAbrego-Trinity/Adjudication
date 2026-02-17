@@ -4,6 +4,21 @@
  * Follows Trinity design standards with white background requirement
  */
 
+/* Breadcrumb Navigation - Force horizontal layout */
+.slds-breadcrumb__list {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* Breadcrumb separator positioning */
+.slds-breadcrumb .slds-list__item:before,
+.slds-breadcrumb .slds-breadcrumb__item:before {
+    left: -0.7rem !important;
+}
+
 /* SLICK Dynamic Modal Container */
 .slds-modal_large {
     /* Dynamic width based on content, with elegant limits */
