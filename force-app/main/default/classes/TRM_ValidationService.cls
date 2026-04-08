@@ -251,8 +251,9 @@ public with sharing class TRM_ValidationService {
             ));
         }
         
-        // Rule 3: Account-specific payments ≤ Account accrued balance (HARD BLOCK)
+        // Rule 3: Account-specific payments ≤ Account available funds (HARD BLOCK)
         // RAY FEEDBACK: Changed from WARNING to ERROR - must block adjudication when balance exceeded
+        // MVADM-188 FIX: Changed from BalanceAccrued__c to TRM_Available_Funds__c (Available Funds)
         // TRINITY: This validates PER-ACCOUNT to ensure we can't pay more than available in each Member Account
         if (!accountPayments.isEmpty()) {
             // 🔍 DEBUG: Log account payments breakdown
@@ -262,7 +263,7 @@ public with sharing class TRM_ValidationService {
             }
 
             Map<Id, Member_Account__c> accounts = new Map<Id, Member_Account__c>([
-                SELECT Id, Name, BalanceAccrued__c
+                SELECT Id, Name, TRM_Available_Funds__c
                 FROM Member_Account__c
                 WHERE Id IN :accountPayments.keySet()
             ]);
@@ -271,13 +272,13 @@ public with sharing class TRM_ValidationService {
                 Member_Account__c account = accounts.get(accountId);
                 if (account != null) {
                     Decimal accountPayment = accountPayments.get(accountId);
-                    Decimal accruedBalance = safeDecimal(account.BalanceAccrued__c);
+                    Decimal availableFunds = safeDecimal(account.TRM_Available_Funds__c);
 
                     // 🔍 DEBUG: Log comparison for each account
-                    System.debug('🔍 Account: ' + account.Name + ' - Payment: ' + accountPayment + ', Balance: ' + accruedBalance);
+                    System.debug('🔍 Account: ' + account.Name + ' - Payment: ' + accountPayment + ', Available Funds: ' + availableFunds);
 
-                    if (accountPayment > accruedBalance) {
-                        Decimal shortfall = accountPayment - accruedBalance;
+                    if (accountPayment > availableFunds) {
+                        Decimal shortfall = accountPayment - availableFunds;
 
                         // 🔍 DEBUG: Log validation failure
                         System.debug('🔍 VALIDATION FAILURE - Account ' + account.Name + ' has shortfall: ' + shortfall);
@@ -286,8 +287,8 @@ public with sharing class TRM_ValidationService {
                             'account_payment_exceeds_balance',
                             'Account Balance Check',
                             'error', // ✅ HARD BLOCK - Cannot adjudicate with insufficient funds (RAY FEEDBACK)
-                            String.format('Payments from {0} (${1}) exceed accrued balance (${2})',
-                                new List<String>{account.Name, formatCurrency(accountPayment), formatCurrency(accruedBalance)}),
+                            String.format('Payments from {0} (${1}) exceed available funds (${2})',
+                                new List<String>{account.Name, formatCurrency(accountPayment), formatCurrency(availableFunds)}),
                             String.format('Shortfall: ${0}. Reallocate payments or verify account balance.',
                                 new List<String>{formatCurrency(shortfall)}),
                             'CHARGE_LEVEL'
@@ -453,8 +454,14 @@ public with sharing class TRM_ValidationService {
         List<ValidationFailure> failures = new List<ValidationFailure>();
 
         // Rule 1: Line item accounts must belong to case member
-        // Note: Member_Account__c does NOT have Entity__c field
-        // Validate that line item Account__c matches the member account associated with the case
+        // COMMENTED OUT: This validation is redundant and incorrect
+        // - Business process ALLOWS different line items to use different Member Accounts
+        // - Custodial_Account__c is null in 85% of cases (after MVADM-188 removed BCN.Member_Account__c requirement)
+        // - Validation would block valid cases where multiple accounts pay different line items
+        // Related: MVADM-188 (BCN.Member_Account__c validation removal)
+        // Note: Individual line items are validated to have an Account__c in validateLineItems() method
+        // Note: Account balance validation is done per-account in validateCharges() method
+        /*
         Set<Id> accountIds = new Set<Id>();
         for (Bill_Line_Item__c item : lineItems) {
             if (item.Account__c != null) {
@@ -487,6 +494,7 @@ public with sharing class TRM_ValidationService {
                 ));
             }
         }
+        */
 
         // Rule 2: Payee and Payee Address must be related
         if (bcnCase.Payee_Name__c != null && bcnCase.Payee_Address__c != null) {
@@ -820,13 +828,17 @@ public with sharing class TRM_ValidationService {
             passedRules.add(new ValidationPass('line_invalid_service_date_range', 'Valid Date Ranges', 'LINE_ITEM', 'All service end dates are after start dates'));
         }
 
-        // Relational Integrity Rules (2 total)
+        // Relational Integrity Rules (1 active, 1 commented out)
         if (!failedRuleIds.contains('relational_orphaned_line_items')) {
             passedRules.add(new ValidationPass('relational_orphaned_line_items', 'No Orphaned Line Items', 'RELATIONAL', 'All line items are properly linked to BCN'));
         }
+        // COMMENTED OUT: Related to relational_invalid_account_references validation removal
+        // This rule is no longer active as the validation was incorrect for the business process
+        /*
         if (!failedRuleIds.contains('relational_invalid_account_references')) {
             passedRules.add(new ValidationPass('relational_invalid_account_references', 'Valid Account References', 'RELATIONAL', 'All account references are valid'));
         }
+        */
 
         System.debug('TRINITY: Passed Rules Count: ' + passedRules.size());
         return passedRules;

@@ -1,0 +1,264 @@
+<template>
+    <div class="accounts-tab-container">
+        
+        <!-- Loading State -->
+        <template if:true={isLoading}>
+            <div class="loading-section">
+                <lightning-spinner alternative-text="Loading account information..." size="medium"></lightning-spinner>
+                <p class="loading-message">Retrieving Member Account details...</p>
+            </div>
+        </template>
+
+        <!-- Error State -->
+        <template if:true={error}>
+            <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                <span class="slds-assistive-text">Error</span>
+                <h2>
+                    <lightning-icon icon-name="utility:error" size="small" class="slds-m-right_small"></lightning-icon>
+                    Error Loading Account Data: {error}
+                </h2>
+            </div>
+        </template>
+
+        <!-- No Data State -->
+        <template if:true={showNoData}>
+            <div class="no-data-section">
+                <lightning-icon icon-name="utility:account" size="large" class="no-data-icon"></lightning-icon>
+                <h3 class="no-data-title">No Account Data</h3>
+                <p class="no-data-message">No Member Account information found for this Case.</p>
+                <p class="no-data-help">Ensure the Case is linked to a Bill with a Member Account.</p>
+            </div>
+        </template>
+
+        <!-- Account Data Content -->
+        <template if:false={isLoading}>
+            <template if:false={error}>
+                <template if:false={showNoData}>
+                    
+                    <!-- Account Summary Header -->
+                    <div class="account-summary-header">
+                        <div class="slds-grid slds-wrap slds-gutters">
+                            <div class="slds-col slds-size_1-of-2">
+                                <h3 class="account-title">
+                                    <lightning-icon icon-name="utility:account" size="small" class="slds-m-right_small"></lightning-icon>
+                                    Member Account Information
+                                </h3>
+                                <p class="account-subtitle">Fund balances and account status for adjudication review</p>
+                            </div>
+                            <div class="slds-col slds-size_1-of-2 slds-text-align_right">
+                                <span class={accountStatusClass}>
+                                    <lightning-icon icon-name={accountStatusIcon} size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                    {accountStatusText}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Primary Account Details -->
+                    <template if:true={primaryAccount}>
+                        <div class="account-section primary-account">
+                            <div class="account-card">
+                                <div class="account-header">
+                                    <div class="account-type-badge primary-badge">
+                                        <lightning-icon icon-name="utility:money" size="small"></lightning-icon>
+                                        <span class="badge-text">Primary Account</span>
+                                    </div>
+                                    <div class="account-actions">
+                                        <lightning-button 
+                                            variant="neutral" 
+                                            label="View Details" 
+                                            size="small"
+                                            onclick={handleViewPrimaryDetails}>
+                                        </lightning-button>
+                                    </div>
+                                </div>
+                                <div class="account-content">
+                                    <div class="slds-grid slds-wrap slds-gutters">
+                                        <div class="slds-col slds-size_1-of-3">
+                                            <div class="account-info-item">
+                                                <label class="info-label">Account Name</label>
+                                                <div class="info-value">{primaryAccount.name}</div>
+                                            </div>
+                                        </div>
+                                        <div class="slds-col slds-size_1-of-3">
+                                            <div class="account-info-item">
+                                                <label class="info-label">Account Type</label>
+                                                <div class="info-value">{primaryAccount.accountType}</div>
+                                            </div>
+                                        </div>
+                                        <div class="slds-col slds-size_1-of-3">
+                                            <div class="account-info-item">
+                                                <label class="info-label">Status</label>
+                                                <div class="info-value">
+                                                    <span class={primaryAccount.statusClass}>{primaryAccount.status}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Financial Summary -->
+                                    <div class="financial-summary">
+                                        <h4 class="summary-title">Financial Summary</h4>
+                                        <div class="slds-grid slds-wrap slds-gutters">
+                                            <div class="slds-col slds-size_1-of-4">
+                                                <div class="financial-item">
+                                                    <label class="financial-label">Available Balance</label>
+                                                    <div class="financial-value available-balance">
+                                                        <lightning-formatted-number 
+                                                            value={primaryAccount.availableBalance} 
+                                                            format-style="currency" 
+                                                            currency-code="USD">
+                                                        </lightning-formatted-number>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="slds-col slds-size_1-of-4">
+                                                <div class="financial-item">
+                                                    <label class="financial-label">Allocated Funds</label>
+                                                    <div class="financial-value allocated-funds">
+                                                        <lightning-formatted-number 
+                                                            value={primaryAccount.allocatedFunds} 
+                                                            format-style="currency" 
+                                                            currency-code="USD">
+                                                        </lightning-formatted-number>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="slds-col slds-size_1-of-4">
+                                                <div class="financial-item">
+                                                    <label class="financial-label">Reserved Funds</label>
+                                                    <div class="financial-value reserved-funds">
+                                                        <lightning-formatted-number 
+                                                            value={primaryAccount.reservedFunds} 
+                                                            format-style="currency" 
+                                                            currency-code="USD">
+                                                        </lightning-formatted-number>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="slds-col slds-size_1-of-4">
+                                                <div class="financial-item">
+                                                    <label class="financial-label">Total Balance</label>
+                                                    <div class="financial-value total-balance">
+                                                        <lightning-formatted-number 
+                                                            value={primaryAccount.totalBalance} 
+                                                            format-style="currency" 
+                                                            currency-code="USD">
+                                                        </lightning-formatted-number>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Account Dates -->
+                                    <div class="account-dates">
+                                        <div class="slds-grid slds-wrap slds-gutters">
+                                            <div class="slds-col slds-size_1-of-3">
+                                                <div class="date-item">
+                                                    <label class="date-label">Effective Date</label>
+                                                    <div class="date-value">
+                                                        <lightning-formatted-date-time 
+                                                            value={primaryAccount.effectiveDate}
+                                                            year="numeric" 
+                                                            month="short" 
+                                                            day="2-digit">
+                                                        </lightning-formatted-date-time>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="slds-col slds-size_1-of-3">
+                                                <div class="date-item">
+                                                    <label class="date-label">Expiration Date</label>
+                                                    <div class="date-value">
+                                                        <lightning-formatted-date-time 
+                                                            value={primaryAccount.expirationDate}
+                                                            year="numeric" 
+                                                            month="short" 
+                                                            day="2-digit">
+                                                        </lightning-formatted-date-time>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="slds-col slds-size_1-of-3">
+                                                <div class="date-item">
+                                                    <label class="date-label">Last Activity</label>
+                                                    <div class="date-value">
+                                                        <lightning-formatted-date-time 
+                                                            value={primaryAccount.lastActivity}
+                                                            year="numeric" 
+                                                            month="short" 
+                                                            day="2-digit">
+                                                        </lightning-formatted-date-time>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Related Accounts (PCA, SAK, etc.) -->
+                    <template if:true={hasRelatedAccounts}>
+                        <div class="account-section related-accounts">
+                            <h4 class="section-title">
+                                <lightning-icon icon-name="utility:groups" size="x-small" class="slds-m-right_small"></lightning-icon>
+                                Related Accounts
+                            </h4>
+                            <div class="related-accounts-grid">
+                                <template for:each={relatedAccounts} for:item="account">
+                                    <div key={account.id} class="related-account-card">
+                                        <div class="related-account-header">
+                                            <div class={account.badgeClass}>
+                                                <lightning-icon icon-name={account.icon} size="small"></lightning-icon>
+                                                <span class="badge-text">{account.accountType}</span>
+                                            </div>
+                                        </div>
+                                        <div class="related-account-content">
+                                            <div class="account-name">{account.name}</div>
+                                            <div class="account-balance">
+                                                <lightning-formatted-number 
+                                                    value={account.availableBalance} 
+                                                    format-style="currency" 
+                                                    currency-code="USD">
+                                                </lightning-formatted-number>
+                                            </div>
+                                            <div class="account-status-small">
+                                                <span class={account.statusClass}>{account.status}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Account Alerts -->
+                    <template if:true={hasAccountAlerts}>
+                        <div class="account-section account-alerts">
+                            <h4 class="section-title">
+                                <lightning-icon icon-name="utility:warning" size="x-small" class="slds-m-right_small"></lightning-icon>
+                                Account Alerts
+                            </h4>
+                            <div class="alerts-container">
+                                <template for:each={accountAlerts} for:item="alert">
+                                    <div key={alert.id} class={alert.alertClass}>
+                                        <lightning-icon icon-name={alert.icon} size="small" class="slds-m-right_small"></lightning-icon>
+                                        <div class="alert-content">
+                                            <h5 class="alert-title">{alert.title}</h5>
+                                            <p class="alert-message">{alert.message}</p>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                </template>
+            </template>
+        </template>
+
+    </div>
+</template>

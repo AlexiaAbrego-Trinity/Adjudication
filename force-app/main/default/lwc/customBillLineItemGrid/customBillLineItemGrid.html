@@ -145,9 +145,10 @@
                         <colgroup>
                             <!-- TRINITY: Keying/Bill Review view columns -->
                             <template if:false={showQuoteView}>
-                                <!-- Fixed columns (no resize) -->
-                                <col class="selection-col">
-                                <col class="duplicate-col">
+                                <!-- Fixed columns (no resize) - TRINITY: Explicit widths required for table-layout: fixed -->
+                                <!-- CLAIMS OPTIMIZATION: Compact widths for better space utilization -->
+                                <col class="selection-col" style="width: 30px;">
+                                <col class="duplicate-col" style="width: 35px;">
 
                                 <!-- Resizable columns -->
                                 <col data-column="lineNumber" style={lineNumberColWidth}>
@@ -168,8 +169,11 @@
 
                                 <!-- Adjudication columns (Bill Review stage only) -->
                                 <template if:true={showAdjudicationColumns}>
+                                    <!-- CLAIMS REQUEST #2: OI columns conditional on oiFieldsExpanded -->
                                     <col data-column="oiAllow" style={oiAllowColWidth}>
-                                    <col data-column="oiPaid" style={oiPaidColWidth}>
+                                    <template if:true={oiFieldsExpanded}>
+                                        <col data-column="oiPaid" style={oiPaidColWidth}>
+                                    </template>
                                     <col data-column="paid" style={paidColWidth}>
                                     <col data-column="thirdParty" style={thirdPartyColWidth}>
                                     <col data-column="patResp" style={patRespColWidth}>
@@ -218,7 +222,7 @@
 
                                     <!-- TRINITY PHASE 1: Line Number column (meeting req line 172) -->
                                     <th class="resizable-column slds-text-align_center" scope="col" style="width: 60px;">
-                                        Line #
+                                        <span class="column-label" style={lineNumberSpanWidth}>Line #</span>
                                         <div class="column-resizer"
                                              data-column="lineNumber"
                                              onmousedown={handleResizeStart}>
@@ -228,7 +232,7 @@
                                 <!-- Service Dates - Expandable -->
                                 <th class="expandable-column-header resizable-column" scope="col">
                                     <div class="header-content">
-                                        <span class="column-label">
+                                        <span class="column-label" style={serviceDatesSpanWidth}>
                                             <template if:false={serviceDatesExpanded}>Service Date</template>
                                             <template if:true={serviceDatesExpanded}>Start Date</template>
                                         </span>
@@ -244,11 +248,11 @@
                                          onmousedown={handleResizeStart}>
                                     </div>
                                 </th>
-                                
+
                                 <!-- End Date (when expanded) -->
                                 <template if:true={serviceDatesExpanded}>
                                     <th class="expandable-column-header resizable-column" scope="col">
-                                        <span class="column-label">End Date</span>
+                                        <span class="column-label" style={endDateSpanWidth}>End Date</span>
                                         <div class="column-resizer"
                                              data-column="endDate"
                                              onmousedown={handleResizeStart}>
@@ -259,7 +263,7 @@
                                 <!-- Codes - Expandable -->
                                 <th class="expandable-column-header resizable-column" scope="col">
                                     <div class="header-content">
-                                        <span class="column-label">
+                                        <span class="column-label" style={codesSpanWidth}>
                                             <template if:false={codesExpanded}>Codes</template>
                                             <template if:true={codesExpanded}>Revenue Code</template>
                                         </span>
@@ -279,7 +283,7 @@
                                 <!-- Additional code columns when expanded -->
                                 <template if:true={codesExpanded}>
                                     <th class="expandable-column-header resizable-column" scope="col">
-                                        <span class="column-label">POS</span>
+                                        <span class="column-label" style={posSpanWidth}>POS</span>
                                         <div class="column-resizer"
                                              data-column="pos"
                                              onmousedown={handleResizeStart}>
@@ -287,14 +291,14 @@
                                     </th>
                                     <th class="expandable-column-header resizable-column" scope="col">
                                         <!-- TRINITY PHASE 1: Updated per Ray's specification (meeting line 296) -->
-                                        <span class="column-label">HCPCS/CPT/NDC</span>
+                                        <span class="column-label" style={cptSpanWidth}>HCPCS/CPT/NDC</span>
                                         <div class="column-resizer"
                                              data-column="cpt"
                                              onmousedown={handleResizeStart}>
                                         </div>
                                     </th>
                                     <th class="expandable-column-header resizable-column" scope="col">
-                                        <span class="column-label">Modifier</span>
+                                        <span class="column-label" style={modifierSpanWidth}>Modifier</span>
                                         <div class="column-resizer"
                                              data-column="modifier"
                                              onmousedown={handleResizeStart}>
@@ -304,7 +308,7 @@
 
                                 <!-- Basic columns -->
                                 <th class="resizable-column" scope="col">
-                                    Quantity
+                                    <span class="column-label" style={quantitySpanWidth}>Quantity</span>
                                     <div class="column-resizer"
                                          data-column="quantity"
                                          onmousedown={handleResizeStart}>
@@ -318,14 +322,14 @@
                                     </div>
                                 </th-->
                                 <th class="resizable-column" scope="col">
-                                    Description
+                                    <span class="column-label" style={descriptionSpanWidth}>Description</span>
                                     <div class="column-resizer"
                                          data-column="description"
                                          onmousedown={handleResizeStart}>
                                     </div>
                                 </th>
                                 <th class="resizable-column" scope="col">
-                                    Charge
+                                    <span class="column-label" style={chargeSpanWidth}>Charge</span>
                                     <div class="column-resizer"
                                          data-column="charge"
                                          onmousedown={handleResizeStart}>
@@ -334,36 +338,52 @@
 
                                 <!-- Adjudication columns (Bill Review stage only) -->
                                 <template if:true={showAdjudicationColumns}>
-                                    <th class="resizable-column" scope="col">
-                                        OI Allow
+                                    <!-- CLAIMS REQUEST #2: OI Allow/Paid Expandable Columns -->
+                                    <th class="expandable-column-header resizable-column" scope="col">
+                                        <div class="header-content">
+                                            <span class="column-label" style={oiAllowSpanWidth}>
+                                                <template if:false={oiFieldsExpanded}>OI</template>
+                                                <template if:true={oiFieldsExpanded}>OI Allow</template>
+                                            </span>
+                                            <button class="toggle-button" onclick={toggleOIFields} title="Toggle OI Allow/Paid">
+                                                <span class="expand-icon">
+                                                    <template if:false={oiFieldsExpanded}>⟨⟩</template>
+                                                    <template if:true={oiFieldsExpanded}>⟩⟨</template>
+                                                </span>
+                                            </button>
+                                        </div>
                                         <div class="column-resizer"
                                              data-column="oiAllow"
                                              onmousedown={handleResizeStart}>
                                         </div>
                                     </th>
+
+                                    <!-- OI Paid header - only show when expanded -->
+                                    <template if:true={oiFieldsExpanded}>
+                                        <th class="expandable-column-header resizable-column" scope="col">
+                                            <span class="column-label" style={oiPaidSpanWidth}>OI Paid</span>
+                                            <div class="column-resizer"
+                                                 data-column="oiPaid"
+                                                 onmousedown={handleResizeStart}>
+                                            </div>
+                                        </th>
+                                    </template>
                                     <th class="resizable-column" scope="col">
-                                        OI Paid
-                                        <div class="column-resizer"
-                                             data-column="oiPaid"
-                                             onmousedown={handleResizeStart}>
-                                        </div>
-                                    </th>
-                                    <th class="resizable-column" scope="col">
-                                        Paid
+                                        <span class="column-label" style={paidSpanWidth}>Paid</span>
                                         <div class="column-resizer"
                                              data-column="paid"
                                              onmousedown={handleResizeStart}>
                                         </div>
                                     </th>
                                     <th class="resizable-column" scope="col">
-                                        3rd Party
+                                        <span class="column-label" style={thirdPartySpanWidth}>3rd Party</span>
                                         <div class="column-resizer"
                                              data-column="thirdParty"
                                              onmousedown={handleResizeStart}>
                                         </div>
                                     </th>
                                     <th class="resizable-column" scope="col">
-                                        Pat Resp
+                                        <span class="column-label" style={patRespSpanWidth}>Pat Resp</span>
                                         <div class="column-resizer"
                                              data-column="patResp"
                                              onmousedown={handleResizeStart}>
@@ -373,7 +393,7 @@
                                     <!-- Remark Codes - Expandable -->
                                     <th class="expandable-column-header resizable-column" scope="col">
                                         <div class="header-content">
-                                            <span class="column-label">
+                                            <span class="column-label" style={remarkCodesSpanWidth}>
                                                 <template if:false={remarkCodesExpanded}>Remark Codes</template>
                                                 <template if:true={remarkCodesExpanded}>RC1</template>
                                             </span>
@@ -393,21 +413,21 @@
                                     <!-- Additional remark code columns when expanded -->
                                     <template if:true={remarkCodesExpanded}>
                                         <th class="expandable-column-header resizable-column" scope="col">
-                                            <span class="column-label">RC2</span>
+                                            <span class="column-label" style={rc2SpanWidth}>RC2</span>
                                             <div class="column-resizer"
                                                  data-column="rc2"
                                                  onmousedown={handleResizeStart}>
                                             </div>
                                         </th>
                                         <th class="expandable-column-header resizable-column" scope="col">
-                                            <span class="column-label">RC3</span>
+                                            <span class="column-label" style={rc3SpanWidth}>RC3</span>
                                             <div class="column-resizer"
                                                  data-column="rc3"
                                                  onmousedown={handleResizeStart}>
                                             </div>
                                         </th>
                                         <th class="expandable-column-header resizable-column" scope="col">
-                                            <span class="column-label">RC4</span>
+                                            <span class="column-label" style={rc4SpanWidth}>RC4</span>
                                             <div class="column-resizer"
                                                  data-column="rc4"
                                                  onmousedown={handleResizeStart}>
@@ -416,14 +436,14 @@
                                     </template>
 
                                     <th class="resizable-column" scope="col">
-                                        Account
+                                        <span class="column-label" style={accountSpanWidth}>Account</span>
                                         <div class="column-resizer"
                                              data-column="account"
                                              onmousedown={handleResizeStart}>
                                         </div>
                                     </th>
                                     <th class="resizable-column" scope="col">
-                                        Medicare
+                                        <span class="column-label" style={medicareSpanWidth}>Medicare</span>
                                         <div class="column-resizer"
                                              data-column="medicare"
                                              onmousedown={handleResizeStart}>
@@ -522,36 +542,54 @@
                                             </template>
                                         </td>
 
-                                        <!-- Duplicate Flag -->
+                                        <!-- MVADM-185: Duplicate Flag with enhanced tooltip and clickable modal -->
                                         <td class="slds-text-align_center duplicate-flag-cell">
                                             <template if:true={item.isDuplicate}>
-                                                <div class="duplicate-icons-container">
-                                                    <!-- Exact Duplicate: Green triangle -->
+                                                <div class="duplicate-icons-container"
+                                                     data-item-id={item.id}
+                                                     onclick={handleDuplicateIconClick}
+                                                     style="cursor: pointer;">
+                                                    <!-- Exact Duplicate: Green triangle with tooltip -->
                                                     <template if:true={item.isExactDuplicate}>
-                                                        <lightning-icon
-                                                            icon-name="utility:warning"
-                                                            size="small"
-                                                            variant="success"
-                                                            title={item.duplicateStatusLabel}>
-                                                        </lightning-icon>
+                                                        <c-hover-tooltip
+                                                            content={item.duplicateStatusLabel}
+                                                            position="right"
+                                                            max-width="350"
+                                                            delay="300">
+                                                            <lightning-icon
+                                                                icon-name="utility:warning"
+                                                                size="small"
+                                                                variant="success">
+                                                            </lightning-icon>
+                                                        </c-hover-tooltip>
                                                     </template>
-                                                    <!-- Potential Duplicate: Yellow triangle -->
+                                                    <!-- Potential Duplicate: Yellow triangle with tooltip -->
                                                     <template if:false={item.isExactDuplicate}>
-                                                        <lightning-icon
-                                                            icon-name="utility:warning"
-                                                            size="small"
-                                                            variant="warning"
-                                                            title={item.duplicateStatusLabel}>
-                                                        </lightning-icon>
+                                                        <c-hover-tooltip
+                                                            content={item.duplicateStatusLabel}
+                                                            position="right"
+                                                            max-width="350"
+                                                            delay="300">
+                                                            <lightning-icon
+                                                                icon-name="utility:warning"
+                                                                size="small"
+                                                                variant="warning">
+                                                            </lightning-icon>
+                                                        </c-hover-tooltip>
                                                     </template>
                                                     <!-- Green moneybag if exact charge match (for both Exact and Potential) -->
                                                     <template if:true={item.hasExactChargeMatch}>
-                                                        <lightning-icon
-                                                            icon-name="utility:moneybag"
-                                                            size="small"
-                                                            variant="success"
-                                                            title="Exact charge match found">
-                                                        </lightning-icon>
+                                                        <c-hover-tooltip
+                                                            content="Exact charge match found in duplicate records"
+                                                            position="right"
+                                                            max-width="250"
+                                                            delay="300">
+                                                            <lightning-icon
+                                                                icon-name="utility:moneybag"
+                                                                size="small"
+                                                                variant="success">
+                                                            </lightning-icon>
+                                                        </c-hover-tooltip>
                                                     </template>
                                                 </div>
                                             </template>
@@ -585,14 +623,15 @@
                                                     type="text"
                                                     class="date-input"
                                                     value={item.formattedStartDate}
+                                                    onfocus={handleDateFocus}
                                                     onchange={handleFieldChange}
                                                     onblur={handleFieldBlur}
                                                     onkeydown={handleKeyDown}
                                                     data-field="Service_Start_Date__c"
                                                     data-row-id={item.Id}
-                                                    pattern="^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/\d{4}$"
-                                                    placeholder="MM/DD/YYYY"
-                                                    message-when-pattern-mismatch="Use the format MM/DD/YYYY (e.g., 01/29/2026)."
+                                                    pattern="^(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{4}$"
+                                                    placeholder="MMDDYYYY"
+                                                    message-when-pattern-mismatch="Use format MMDDYYYY (e.g., 01292026)"
                                                     disabled={isAdjudicated}>
 
                                                 <!-- Date validation error message -->
@@ -610,14 +649,15 @@
                                                     type="text"
                                                     class="date-input"
                                                     value={item.formattedEndDate}
+                                                    onfocus={handleDateFocus}
                                                     onchange={handleFieldChange}
                                                     onblur={handleFieldBlur}
                                                     onkeydown={handleKeyDown}
                                                     data-field="Service_End_Date__c"
                                                     data-row-id={item.Id}
-                                                    pattern="^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/\d{4}$"
-                                                    message-when-pattern-mismatch="Use the format MM/DD/YYYY (e.g., 01/29/2026)."
-                                                    placeholder="MM/DD/YYYY"
+                                                    pattern="^(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{4}$"
+                                                    message-when-pattern-mismatch="Use format MMDDYYYY (e.g., 01292026)"
+                                                    placeholder="MMDDYYYY"
                                                     disabled={isAdjudicated}>
 
                                                 <!-- Date validation error message -->
@@ -753,9 +793,7 @@
                                         <lightning-input
                                             type="number"
                                             step="0.01"
-                                            formatter="currency"
                                             value={item.Charge__c}
-                                            onchange={handleFieldChange}
                                             onblur={handleFieldBlur}
                                             onkeydown={handleKeyDown}
                                             data-field="Charge__c"
@@ -767,46 +805,60 @@
                                     
                                     <!-- Adjudication columns -->
                                     <template if:true={showAdjudicationColumns}>
-                                        <!-- Other adjudication columns - TRINITY: All editable for demo -->
-                                        <td>
-                                            <lightning-input
-                                                type="number"
-                                                step="0.01"
-                                                formatter="currency"
-                                                value={item.Other_Ins_Allowed__c}
-                                                onchange={handleFieldChange}
-                                                onblur={handleFieldBlur}
-                                                onkeydown={handleKeyDown}
-                                                data-field="Other_Ins_Allowed__c"
-                                                data-row-id={item.Id}
-                                                variant="label-hidden"
-                                                disabled={isAdjudicated}>
-                                            </lightning-input>
-                                        </td>
-                                        <td>
-                                            <lightning-input
-                                                type="number"
-                                                step="0.01"
-                                                formatter="currency"
-                                                value={item.Other_Ins_Paid__c}
-                                                onchange={handleFieldChange}
-                                                onblur={handleFieldBlur}
-                                                onkeydown={handleKeyDown}
-                                                data-field="Other_Ins_Paid__c"
-                                                data-row-id={item.Id}
-                                                variant="label-hidden"
-                                                disabled={isAdjudicated}>
-                                            </lightning-input>
-                                        </td>
+                                        <!-- CLAIMS REQUEST #2: OI Allow/Paid Expandable -->
+
+                                        <!-- COLLAPSED VIEW: Single cell with stacked display -->
+                                        <template if:false={oiFieldsExpanded}>
+                                            <td class="expandable-column" data-field="Other_Ins_Allowed__c">
+                                                <div class="stacked-display">
+                                                    <div class="stacked-field">
+                                                        <span class="field-label">Allow:</span>
+                                                        <span class="field-value">${item.Other_Ins_Allowed__c}</span>
+                                                    </div>
+                                                    <div class="stacked-field">
+                                                        <span class="field-label">Paid:</span>
+                                                        <span class="field-value">${item.Other_Ins_Paid__c}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </template>
+
+                                        <!-- EXPANDED VIEW: Separate editable columns -->
+                                        <template if:true={oiFieldsExpanded}>
+                                            <td>
+                                                <lightning-input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={item.Other_Ins_Allowed__c}
+                                                    onblur={handleFieldBlur}
+                                                    onkeydown={handleKeyDown}
+                                                    data-field="Other_Ins_Allowed__c"
+                                                    data-row-id={item.Id}
+                                                    variant="label-hidden"
+                                                    disabled={isAdjudicated}>
+                                                </lightning-input>
+                                            </td>
+                                            <td>
+                                                <lightning-input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={item.Other_Ins_Paid__c}
+                                                    onblur={handleFieldBlur}
+                                                    onkeydown={handleKeyDown}
+                                                    data-field="Other_Ins_Paid__c"
+                                                    data-row-id={item.Id}
+                                                    variant="label-hidden"
+                                                    disabled={isAdjudicated}>
+                                                </lightning-input>
+                                            </td>
+                                        </template>
                                         <td>
                                             <!-- TRINITY PHASE 3: Right-click for payment bulk operations -->
                                             <div oncontextmenu={handleRightClick} data-field-name="Approved_Amount__c" data-row-id={item.Id}>
                                                 <lightning-input
                                                     type="number"
                                                     step="0.01"
-                                                    formatter="currency"
                                                     value={item.Approved_Amount__c}
-                                                    onchange={handleFieldChange}
                                                     onblur={handleFieldBlur}
                                                     onkeydown={handleKeyDown}
                                                     data-field="Approved_Amount__c"
@@ -821,10 +873,8 @@
                                             <div oncontextmenu={handleRightClick} data-field-name="X3rd_Party_Curr__c" data-row-id={item.Id}>
                                                 <lightning-input
                                                     type="number"
-                                                    formatter="currency"
                                                     step="0.01"
                                                     value={item.X3rd_Party_Curr__c}
-                                                    onchange={handleFieldChange}
                                                     onblur={handleFieldBlur}
                                                     onkeydown={handleKeyDown}
                                                     data-field="X3rd_Party_Curr__c"
@@ -840,9 +890,7 @@
                                                 <lightning-input
                                                     type="number"
                                                     step="0.01"
-                                                    formatter="currency"
                                                     value={item.Patient_Responsibility__c}
-                                                    onchange={handleFieldChange}
                                                     onblur={handleFieldBlur}
                                                     onkeydown={handleKeyDown}
                                                     data-field="Patient_Responsibility__c"
@@ -1048,7 +1096,8 @@
                                                 placeholder={LOOKUP_FIELD_CONFIG.CPT_HCPCS_NDC__c.placeholder}
                                                 allow-custom-entry={LOOKUP_FIELD_CONFIG.CPT_HCPCS_NDC__c.allowCustomEntry}
                                                 data-row-id={item.Id}
-                                                oncodeselected={handleCodeSelected}>
+                                                oncodeselected={handleCodeSelected}
+                                                disabled={isAdjudicated}>
                                             </c-code-lookup-field>
                                         </td>
 
@@ -1057,9 +1106,7 @@
                                             <lightning-input
                                                 type="number"
                                                 step="0.01"
-                                                formatter="currency"
                                                 value={item.Charge__c}
-                                                onchange={handleFieldChange}
                                                 onblur={handleFieldBlur}
                                                 onkeydown={handleKeyDown}
                                                 data-field="Charge__c"
@@ -1074,9 +1121,7 @@
                                             <lightning-input
                                                 type="number"
                                                 step="0.01"
-                                                formatter="currency"
                                                 value={item.Approved_Amount__c}
-                                                onchange={handleFieldChange}
                                                 onblur={handleFieldBlur}
                                                 onkeydown={handleKeyDown}
                                                 data-field="Approved_Amount__c"
@@ -1349,5 +1394,282 @@
             onfixissues={handleFixIssues}
             onproceed={handleProceedWithAdjudication}>
         </c-validation-report-modal>
+    </template>
+
+    <!-- TRINITY DUPLICATE WARNING: Modal to warn about duplicates before adjudication -->
+    <template if:true={showDuplicateWarningModal}>
+        <section role="dialog" tabindex="-1" aria-labelledby="duplicate-modal-heading" aria-modal="true"
+                 class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+                <!-- Modal Header - RED ALERT THEME -->
+                <header class="slds-modal__header slds-theme_error slds-theme_alert-texture">
+                    <h2 id="duplicate-modal-heading" class="slds-text-heading_medium slds-hyphenate">
+                        <lightning-icon icon-name="utility:warning" alternative-text="Warning"
+                                        size="small" class="slds-m-right_x-small"></lightning-icon>
+                        Duplicates Detected
+                    </h2>
+                </header>
+
+                <!-- Modal Body -->
+                <div class="slds-modal__content slds-p-around_medium">
+                    <div class="slds-text-color_error slds-text-heading_small slds-m-bottom_small">
+                        <strong>{duplicateWarningCount} DUPLICATE LINE ITEMS FOUND</strong>
+                    </div>
+                    <p class="slds-m-bottom_small">
+                        <strong>Please review all duplicates before proceeding.</strong>
+                    </p>
+                    <p class="slds-m-bottom_medium">
+                        Look for bill line items rows marked with ⚠️ 
+                    </p>
+                    <div class="slds-box slds-theme_shade slds-p-around_small slds-m-bottom_medium">
+                        <p class="slds-text-body_small">
+                            <strong>Action Required:</strong> Review each duplicate to ensure it's not a billing error before adjudicating.
+                        </p>
+                    </div>
+                    <lightning-input
+                        type="checkbox"
+                        label="I confirm I have reviewed each duplicate line item and verified they are legitimate charges"
+                        checked={duplicateCheckboxChecked}
+                        onchange={handleDuplicateCheckboxChange}
+                        class="slds-text-body_regular">
+                    </lightning-input>
+                </div>
+
+                <!-- Modal Footer -->
+                <footer class="slds-modal__footer">
+                    <lightning-button
+                        label="Go Back and Review"
+                        onclick={handleCancelDuplicateModal}
+                        class="slds-m-right_small">
+                    </lightning-button>
+                    <lightning-button
+                        variant="destructive"
+                        label="Continue with Adjudication"
+                        onclick={handleContinueWithDuplicates}
+                        disabled={isAdjudicateButtonDisabled}>
+                    </lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+    <!-- MVADM-185: Duplicate Details Modal with Tabs -->
+    <template if:true={showDuplicateDetailsModal}>
+        <section role="dialog" tabindex="-1" aria-labelledby="duplicate-details-modal-heading" aria-modal="true"
+                 class="slds-modal slds-fade-in-open slds-modal_large">
+            <div class="slds-modal__container">
+                <!-- Modal Header -->
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
+                            title="Close" onclick={closeDuplicateDetailsModal}>
+                        <lightning-icon icon-name="utility:close" size="small"></lightning-icon>
+                        <span class="slds-assistive-text">Close</span>
+                    </button>
+                    <h2 id="duplicate-details-modal-heading" class="slds-text-heading_medium slds-hyphenate">
+                        <lightning-icon icon-name="utility:warning" alternative-text="Duplicate"
+                                        size="small" class="slds-m-right_x-small"></lightning-icon>
+                        <template if:true={selectedDuplicateLineItem}>
+                            Duplicate Details for {selectedDuplicateLineItem.Name}
+                        </template>
+                    </h2>
+                </header>
+
+                <!-- Modal Body with Tabs -->
+                <div class="slds-modal__content slds-p-around_medium">
+                    <!-- Tabs -->
+                    <lightning-tabset active-tab-value={duplicateDetailsActiveTab} onselect={handleDuplicateDetailsTabChange}>
+
+                        <!-- Tab 1: Matches Found -->
+                        <lightning-tab label={matchesTabLabel} value="matches">
+                            <div class="slds-p-around_small">
+                                <template if:true={duplicateMatches}>
+                                    <template if:true={duplicateMatches.length}>
+                                        <p class="slds-m-bottom_small slds-text-body_small">
+                                            Records that <strong>THIS</strong> line item matches:
+                                        </p>
+
+                                        <!-- Compact table of matches -->
+                                        <table class="slds-table slds-table_bordered slds-table_cell-buffer slds-table_striped">
+                                            <thead>
+                                                <tr class="slds-line-height_reset">
+                                                    <th scope="col" style="width: 100px;">
+                                                        <div class="slds-truncate" title="Type">Type</div>
+                                                    </th>
+                                                    <th scope="col" style="width: 120px;">
+                                                        <div class="slds-truncate" title="Line Item">Line Item</div>
+                                                    </th>
+                                                    <th scope="col" style="width: 100px;">
+                                                        <div class="slds-truncate" title="Bill">Bill</div>
+                                                    </th>
+                                                    <th scope="col" style="width: 80px;">
+                                                        <div class="slds-truncate" title="Procedure">Procedure</div>
+                                                    </th>
+                                                    <th scope="col" style="width: 100px;">
+                                                        <div class="slds-truncate" title="Charge">Charge</div>
+                                                    </th>
+                                                    <th scope="col" style="width: 100px;">
+                                                        <div class="slds-truncate" title="Service Date">Service Date</div>
+                                                    </th>
+                                                    <th scope="col" style="width: 200px;">
+                                                        <div class="slds-truncate" title="Actions">Actions</div>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <template for:each={duplicateMatches} for:item="match">
+                                                    <tr key={match.recordId} class="slds-hint-parent">
+                                                        <td data-label="Type">
+                                                            <lightning-badge label={match.matchTypeLabel}
+                                                                           class={match.matchTypeClass}></lightning-badge>
+                                                        </td>
+                                                        <td data-label="Line Item">
+                                                            <div class="slds-truncate" title={match.recordName}>{match.recordName}</div>
+                                                        </td>
+                                                        <td data-label="Bill">
+                                                            <div class="slds-truncate" title={match.billExternalId}>{match.billExternalId}</div>
+                                                        </td>
+                                                        <td data-label="Procedure">
+                                                            <div class="slds-truncate" title={match.procedureCode}>{match.procedureCode}</div>
+                                                        </td>
+                                                        <td data-label="Charge">
+                                                            <div class="slds-truncate" title={match.formattedCharge}>{match.formattedCharge}</div>
+                                                        </td>
+                                                        <td data-label="Service Date">
+                                                            <div class="slds-truncate" title={match.formattedDate}>{match.formattedDate}</div>
+                                                        </td>
+                                                        <td data-label="Actions">
+                                                            <div class="slds-button-group" role="group">
+                                                                <template if:true={match.caseId}>
+                                                                    <lightning-button
+                                                                        label="View Case"
+                                                                        variant="neutral"
+                                                                        onclick={navigateToCase}
+                                                                        data-case-id={match.caseId}
+                                                                        class="slds-m-right_xx-small">
+                                                                    </lightning-button>
+                                                                </template>
+                                                                <lightning-button
+                                                                    label="View Line Item"
+                                                                    variant="brand"
+                                                                    onclick={navigateToLineItem}
+                                                                    data-line-item-id={match.recordId}>
+                                                                </lightning-button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                    </template>
+                                    <template if:false={duplicateMatches.length}>
+                                        <p class="slds-text-color_weak">No matches found.</p>
+                                    </template>
+                                </template>
+                            </div>
+                        </lightning-tab>
+
+                        <!-- Tab 2: Referenced By -->
+                        <lightning-tab label={referencedByTabLabel} value="referencedBy">
+                            <div class="slds-p-around_small">
+                                <template if:true={duplicateReferences}>
+                                    <template if:true={duplicateReferences.length}>
+                                        <p class="slds-m-bottom_small slds-text-body_small">
+                                            Records that reference <strong>THIS</strong> line item as a duplicate:
+                                        </p>
+
+                                        <!-- Compact table of references -->
+                                        <table class="slds-table slds-table_bordered slds-table_cell-buffer slds-table_striped">
+                                            <thead>
+                                                <tr class="slds-line-height_reset">
+                                                    <th scope="col" style="width: 100px;">
+                                                        <div class="slds-truncate" title="Type">Type</div>
+                                                    </th>
+                                                    <th scope="col" style="width: 120px;">
+                                                        <div class="slds-truncate" title="Line Item">Line Item</div>
+                                                    </th>
+                                                    <th scope="col" style="width: 100px;">
+                                                        <div class="slds-truncate" title="Bill">Bill</div>
+                                                    </th>
+                                                    <th scope="col" style="width: 80px;">
+                                                        <div class="slds-truncate" title="Procedure">Procedure</div>
+                                                    </th>
+                                                    <th scope="col" style="width: 100px;">
+                                                        <div class="slds-truncate" title="Charge">Charge</div>
+                                                    </th>
+                                                    <th scope="col" style="width: 100px;">
+                                                        <div class="slds-truncate" title="Service Date">Service Date</div>
+                                                    </th>
+                                                    <th scope="col" style="width: 200px;">
+                                                        <div class="slds-truncate" title="Actions">Actions</div>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <template for:each={duplicateReferences} for:item="ref">
+                                                    <tr key={ref.recordId} class="slds-hint-parent">
+                                                        <td data-label="Type">
+                                                            <lightning-badge label={ref.matchTypeLabel}
+                                                                           class={ref.matchTypeClass}></lightning-badge>
+                                                        </td>
+                                                        <td data-label="Line Item">
+                                                            <div class="slds-truncate" title={ref.recordName}>{ref.recordName}</div>
+                                                        </td>
+                                                        <td data-label="Bill">
+                                                            <div class="slds-truncate" title={ref.billExternalId}>{ref.billExternalId}</div>
+                                                        </td>
+                                                        <td data-label="Procedure">
+                                                            <div class="slds-truncate" title={ref.procedureCode}>{ref.procedureCode}</div>
+                                                        </td>
+                                                        <td data-label="Charge">
+                                                            <div class="slds-truncate" title={ref.formattedCharge}>{ref.formattedCharge}</div>
+                                                        </td>
+                                                        <td data-label="Service Date">
+                                                            <div class="slds-truncate" title={ref.formattedDate}>{ref.formattedDate}</div>
+                                                        </td>
+                                                        <td data-label="Actions">
+                                                            <div class="slds-button-group" role="group">
+                                                                <template if:true={ref.caseId}>
+                                                                    <lightning-button
+                                                                        label="View Case"
+                                                                        variant="neutral"
+                                                                        onclick={navigateToCase}
+                                                                        data-case-id={ref.caseId}
+                                                                        class="slds-m-right_xx-small">
+                                                                    </lightning-button>
+                                                                </template>
+                                                                <lightning-button
+                                                                    label="View Line Item"
+                                                                    variant="brand"
+                                                                    onclick={navigateToLineItem}
+                                                                    data-line-item-id={ref.recordId}>
+                                                                </lightning-button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                    </template>
+                                    <template if:false={duplicateReferences.length}>
+                                        <p class="slds-text-color_weak">No references found.</p>
+                                    </template>
+                                </template>
+                            </div>
+                        </lightning-tab>
+                    </lightning-tabset>
+                </div>
+
+                <!-- Modal Footer -->
+                <footer class="slds-modal__footer">
+                    <lightning-button
+                        label="Close"
+                        variant="neutral"
+                        onclick={closeDuplicateDetailsModal}>
+                    </lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
     </template>
 </template>

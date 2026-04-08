@@ -1,0 +1,169 @@
+<template>
+    <div class="cob-tab-container">
+        <!-- Loading State -->
+        <template if:true={isLoading}>
+            <div class="loading-container">
+                <lightning-spinner alternative-text="Loading COB data..." size="medium"></lightning-spinner>
+                <p>Loading Coordination of Benefits information...</p>
+            </div>
+        </template>
+
+        <!-- Error State -->
+        <template if:true={error}>
+            <div class="error-container">
+                <lightning-icon icon-name="utility:error" variant="error" size="small"></lightning-icon>
+                <p class="error-message">Unable to load COB data. Please contact your administrator.</p>
+            </div>
+        </template>
+
+        <!-- Data Display -->
+        <template if:true={hasCOBData}>
+            <div class="tab-section-header">
+                <h3 class="section-title">
+                    <lightning-icon icon-name="standard:orders" size="small"></lightning-icon>
+                    Coordination of Benefits
+                </h3>
+                <p class="section-subtitle">Primary, secondary, and tertiary payer information for this case</p>
+            </div>
+
+            <!-- COB Summary -->
+            <template if:true={cobSummary}>
+                <div class="cob-summary-card">
+                    <h4>
+                        <lightning-icon icon-name="utility:layers" size="small"></lightning-icon>
+                        COB Summary
+                    </h4>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <span class="summary-label">Medivest Ranking:</span>
+                            <span class="summary-value">{medivestrankingInfo.ranking}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Total Payers:</span>
+                            <span class="summary-value">{payers.length}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">COB Status:</span>
+                            <span class={cobSummary.statusClass}>{cobSummary.status}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Last Updated:</span>
+                            <span class="summary-value">{cobSummary.lastUpdated}</span>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Primary Payer -->
+            <template if:true={hasPrimaryPayer}>
+                <div class="data-card primary-payer-card">
+                    <div class="payer-header">
+                        <h4>
+                            <lightning-icon icon-name="utility:priority" size="small"></lightning-icon>
+                            Primary Payer
+                        </h4>
+                        <span class="payer-rank">1st</span>
+                    </div>
+                    <div class="payer-details">
+                        <div class="payer-info">
+                            <div class="payer-name">{primaryPayer.name}</div>
+                            <div class="payer-type">Type: {primaryPayer.payerType}</div>
+                        </div>
+                        <div class="payer-coverage">
+                            <div class="coverage-item">
+                                <span class="coverage-label">Priority:</span>
+                                <span class="coverage-value">{primaryPayer.priority}</span>
+                            </div>
+                            <div class="coverage-item">
+                                <span class="coverage-label">Effective Date:</span>
+                                <span class="coverage-value">{primaryPayer.effectiveDate}</span>
+                            </div>
+                            <div class="coverage-item">
+                                <span class="coverage-label">Status:</span>
+                                <span class="coverage-value">{primaryPayer.status}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Secondary Payer -->
+            <template if:true={secondaryPayer}>
+                <div class="data-card secondary-payers-card">
+                    <h4>
+                        <lightning-icon icon-name="utility:layers" size="small"></lightning-icon>
+                        Secondary Payer
+                    </h4>
+                    <div class="payer-item secondary-payer">
+                        <div class="payer-header">
+                            <div class="payer-info">
+                                <div class="payer-name">{secondaryPayer.name}</div>
+                                <div class="payer-type">Type: {secondaryPayer.payerType}</div>
+                            </div>
+                            <span class="payer-rank">2nd</span>
+                        </div>
+                        <div class="payer-coverage">
+                            <div class="coverage-item">
+                                <span class="coverage-label">Priority:</span>
+                                <span class="coverage-value">{secondaryPayer.priority}</span>
+                            </div>
+                            <div class="coverage-item">
+                                <span class="coverage-label">Status:</span>
+                                <span class="coverage-value">{secondaryPayer.status}</span>
+                            </div>
+                            <div class="coverage-item">
+                                <span class="coverage-label">Effective Date:</span>
+                                <span class="coverage-value">{secondaryPayer.effectiveDate}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Tertiary Payer -->
+            <template if:true={tertiaryPayer}>
+                <div class="data-card tertiary-payers-card">
+                    <h4>
+                        <lightning-icon icon-name="utility:layers" size="small"></lightning-icon>
+                        Tertiary Payer
+                    </h4>
+                    <div class="payer-item tertiary-payer">
+                        <div class="payer-header">
+                            <div class="payer-info">
+                                <div class="payer-name">{tertiaryPayer.name}</div>
+                                <div class="payer-type">Type: {tertiaryPayer.payerType}</div>
+                            </div>
+                            <span class="payer-rank">3rd</span>
+                        </div>
+                        <div class="payer-coverage">
+                            <div class="coverage-item">
+                                <span class="coverage-label">Priority:</span>
+                                <span class="coverage-value">{tertiaryPayer.priority}</span>
+                            </div>
+                            <div class="coverage-item">
+                                <span class="coverage-label">Status:</span>
+                                <span class="coverage-value">{tertiaryPayer.status}</span>
+                            </div>
+                            <div class="coverage-item">
+                                <span class="coverage-label">Effective Date:</span>
+                                <span class="coverage-value">{tertiaryPayer.effectiveDate}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </template>
+
+        <!-- No Data State -->
+        <template if:false={hasCOBData}>
+            <template if:false={isLoading}>
+                <template if:false={error}>
+                    <div class="no-data-container">
+                        <lightning-icon icon-name="utility:info" size="small"></lightning-icon>
+                        <p>No Coordination of Benefits data available for this case.</p>
+                    </div>
+                </template>
+            </template>
+        </template>
+    </div>
+</template>

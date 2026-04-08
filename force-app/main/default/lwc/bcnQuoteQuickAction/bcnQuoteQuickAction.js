@@ -10,10 +10,12 @@
  */
 
 import { LightningElement, api, track, wire } from 'lwc';
-import { CurrentPageReference } from 'lightning/navigation';
-import { getRecord } from 'lightning/uiRecordApi';
+import { CurrentPageReference, NavigationMixin } from 'lightning/navigation';
+import { getRecord, notifyRecordUpdateAvailable } from 'lightning/uiRecordApi';
 import { CloseActionScreenEvent } from 'lightning/actions';
+import { RefreshEvent } from 'lightning/refresh';
 import getBillHeaderData from '@salesforce/apex/TRM_MedicalBillingService.getBillHeaderData';
+import isCurrentUserSystemAdmin from '@salesforce/apex/TRM_MedicalBillingService.isCurrentUserSystemAdmin';
 
 // Case fields for alert system - EXACT REPLICA from bcnQuoteEmbeddedInterface
 const CASE_FIELDS = [
@@ -22,10 +24,11 @@ const CASE_FIELDS = [
     'Case.Status',
     'Case.Priority',
     'Case.Subject',
-    'Case.LastModifiedDate'
+    'Case.LastModifiedDate',
+    'Case.Current_Adjudication_Stage__c' // CLIENT REQUEST: For Bill link visibility check
 ];
 
-export default class BcnQuoteQuickAction extends LightningElement {
+export default class BcnQuoteQuickAction extends NavigationMixin(LightningElement) {
     @api recordId;
     @track showModal = false;
 
@@ -33,6 +36,12 @@ export default class BcnQuoteQuickAction extends LightningElement {
     _effectiveRecordId = null;
     caseData = null;
     billData = null; // TRINITY: Bill header data
+
+    // CLIENT REQUEST: Admin check for Bill link visibility
+    @track isAdmin = false;
+
+    // TRINITY: Track total paid from grid footer (real-time calculation)
+    @track gridTotalPaid = 0;
 
     // EXACT REPLICA: Wire to get current page reference
     @wire(CurrentPageReference)
@@ -60,10 +69,24 @@ export default class BcnQuoteQuickAction extends LightningElement {
     wiredBillHeader({ error, data }) {
         if (data) {
             this.billData = data;
-            console.log('Quick Action: Bill header data loaded:', data);
+            console.log('🔍 Quick Action: Bill header data loaded:', JSON.stringify(data));
+            console.log('🔍 billData.billId:', data.billId);
+            console.log('🔍 billData keys:', Object.keys(data));
         } else if (error) {
             console.error('Quick Action: Error loading Bill header data:', error);
             this.billData = null;
+        }
+    }
+
+    // CLIENT REQUEST: Check if current user is System Administrator
+    @wire(isCurrentUserSystemAdmin)
+    wiredIsAdmin({ error, data }) {
+        if (data !== undefined) {
+            this.isAdmin = data;
+            console.log('🔍 Quick Action: User is admin:', data, '(type:', typeof data, ')');
+        } else if (error) {
+            console.error('Quick Action: Error checking admin status:', error);
+            this.isAdmin = false;
         }
     }
 
@@ -115,6 +138,20 @@ export default class BcnQuoteQuickAction extends LightningElement {
         return !this.billData?.Payee_Name_Label__c && !this.billData?.Payee_Name__r?.Name;
     }
 
+    // RAY FEEDBACK #10: Total Paid display in Bill Header
+    // TRINITY: Use real-time calculation from grid footer (sum of Approved_Amount__c)
+    get billTotalPaid() {
+        const value = this.gridTotalPaid || 0;
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD'
+        }).format(value);
+    }
+
+    get billTotalPaidIsNull() {
+        return !this.gridTotalPaid || this.gridTotalPaid === 0;
+    }
+
     get statusAlert() {
         const status = this.caseStatus;
         if (!status) return { level: 'info', text: 'LOADING', class: 'status-info' };
@@ -133,6 +170,9 @@ export default class BcnQuoteQuickAction extends LightningElement {
                 return { level: 'success', text: 'COMPLETED', class: 'status-success' };
             case 'escalated':
                 return { level: 'error', text: 'ESCALATED', class: 'status-error' };
+            case 'send to netsuite':
+                // CLIENT REQUEST (2026-02-04): Display "SEND TO NETSUITE" for status "Send To Netsuite"
+                return { level: 'success', text: 'SEND TO NETSUITE', class: 'status-success' };
             default:
                 return { level: 'info', text: status.toUpperCase(), class: 'status-info' };
         }
@@ -150,6 +190,44 @@ export default class BcnQuoteQuickAction extends LightningElement {
         }
     }
 
+    // CLIENT REQUEST: Check if Case is in Adjudicated stage (locked)
+    get isAdjudicated() {
+        const stage = this.caseData?.fields?.Current_Adjudication_Stage__c?.value;
+        console.log('🔍 DEBUG isAdjudicated - Current_Adjudication_Stage__c:', stage);
+        return stage === 'Adjudicated';
+    }
+
+    // CLIENT REQUEST: Show Bill link only if admin AND case is adjudicated
+    get showBillLink() {
+        const isAdmin = this.isAdmin === true;
+        const isAdjudicated = this.isAdjudicated === true;
+        const hasBillId = !!this.billRecordId;
+        const result = isAdmin && isAdjudicated && hasBillId;
+        console.log('🔍 DEBUG showBillLink - isAdmin:', isAdmin, 'isAdjudicated:', isAdjudicated, 'hasBillId:', hasBillId, 'billRecordId:', this.billRecordId, 'result:', result);
+        return result;
+    }
+
+    // CLIENT REQUEST: Get Bill record ID for navigation
+    get billRecordId() {
+        return this.billData?.Id;
+    }
+
+    // CLIENT REQUEST: Handle navigation to Bill record
+    handleNavigateToBill(event) {
+        const recordId = event.currentTarget.dataset.recordId;
+
+        if (recordId) {
+            this[NavigationMixin.Navigate]({
+                type: 'standard__recordPage',
+                attributes: {
+                    recordId: recordId,
+                    objectApiName: 'Bill__c',
+                    actionName: 'view'
+                }
+            });
+        }
+    }
+
     // TRINITY QUICK ACTION: Simple modal control methods
     openModal() {
         this.showModal = true;
@@ -159,8 +237,22 @@ export default class BcnQuoteQuickAction extends LightningElement {
     closeModal() {
         this.showModal = false;
         console.log('TRINITY QUICK ACTION: Closed');
-        // Close the Quick Action
-        this.closeQuickAction();
+
+        // Esperar 500ms para que el save + DLRS terminen y se propague a la UI
+        setTimeout(() => {
+            // Notificar que el Bill record fue actualizado (más específico que RefreshEvent)
+            if (this.billData?.Id) {
+                notifyRecordUpdateAvailable([{ recordId: this.billData.Id }]);
+                console.log('TRINITY: Notified Bill record update:', this.billData.Id);
+            }
+
+            // También disparar RefreshEvent para refrescar toda la página
+            this.dispatchEvent(new RefreshEvent());
+            console.log('TRINITY: Page refreshed after save + DLRS calculation (500ms delay)');
+
+            // Close the Quick Action AFTER refresh
+            this.closeQuickAction();
+        }, 500);
     }
 
     // TRINITY QUICK ACTION: Close the Quick Action screen
@@ -182,22 +274,30 @@ export default class BcnQuoteQuickAction extends LightningElement {
         this.showModal = true;
         console.log('TRINITY QUICK ACTION: Component loaded with recordId:', this.recordId);
 
-        // TRINITY v2.4.2: Refresh grid data when modal opens to show latest changes
-        // Fixes issue where changes don't appear until page reload
+        // MVADM-XXX FIX: Refresh grid data when modal opens to show latest changes
+        // Uses proper LWC @api method communication (respects Shadow DOM)
         setTimeout(() => {
             const tabContainer = this.template.querySelector('c-bcn-quote-tab-container');
-            if (tabContainer) {
-                const gridComponent = tabContainer.querySelector('c-custom-bill-line-item-grid');
-                if (gridComponent && gridComponent.refreshData) {
-                    gridComponent.refreshData();
-                    console.log('TRINITY: Grid data refreshed on modal open');
-                }
+            if (tabContainer && typeof tabContainer.refreshGrid === 'function') {
+                tabContainer.refreshGrid();
+                console.log('TRINITY: Grid refresh triggered via @api method');
+            } else {
+                console.warn('TRINITY: Tab container not found or refreshGrid() not available');
             }
-        }, 200); // 200ms delay to ensure DOM is ready
+        }, 300); // 300ms delay to ensure DOM is fully rendered
     }
 
     disconnectedCallback() {
         // Remove escape key listener
         document.removeEventListener('keydown', this.handleKeyDown);
+    }
+
+    /**
+     * TRINITY: Handle total paid change event from grid footer
+     * Updates header display with real-time calculation from grid
+     */
+    handleTotalPaidChange(event) {
+        this.gridTotalPaid = event.detail.totalPaid;
+        console.log('TRINITY: Header received total paid update:', this.gridTotalPaid);
     }
 }

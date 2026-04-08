@@ -1,0 +1,522 @@
+/* TRINITY PROFESSIONAL DOCUMENT MANAGEMENT TAB STYLING */
+
+/* Main Container */
+.document-tab-container {
+    background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
+    padding: 1.5rem;
+    min-height: 400px;
+}
+
+/* Loading Container */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+}
+
+.loading-container p {
+    margin-top: 1rem;
+    font-size: 1rem;
+    color: #5c6b73;
+}
+
+/* Error Container */
+.error-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    background: #fef7f7;
+    border: 1px solid #f5c6cb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
+.error-message {
+    margin-left: 0.5rem;
+    color: #721c24;
+    font-weight: 500;
+}
+
+/* Tab Section Header */
+.tab-section-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e5e5e5;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0176d3;
+    margin-bottom: 0.5rem;
+}
+
+.section-title lightning-icon {
+    margin-right: 0.75rem;
+}
+
+.section-subtitle {
+    font-size: 1rem;
+    color: #706e6b;
+    margin: 0;
+}
+
+/* Document Data Display */
+.document-data-display {
+    display: grid;
+    gap: 1.5rem;
+}
+
+/* Data Cards */
+.data-card {
+    background: #ffffff;
+    border: 1px solid #e5e5e5;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.data-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Card Headers */
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.card-header lightning-icon {
+    margin-right: 0.75rem;
+}
+
+.card-header h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+/* Specific Card Types */
+.document-summary-card {
+    border-left: 4px solid #4caf50;
+}
+
+.document-list-card {
+    border-left: 4px solid #2196f3;
+}
+
+.document-address-card {
+    border-left: 4px solid #ff9800;
+}
+
+/* Document Summary */
+.document-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    border: 1px solid #e9ecef;
+}
+
+.summary-label {
+    font-weight: 600;
+    color: #706e6b;
+    font-size: 0.875rem;
+}
+
+.summary-value {
+    font-weight: 700;
+    color: #4caf50;
+    font-size: 1rem;
+}
+
+/* Document Details */
+.document-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #706e6b;
+    font-size: 0.875rem;
+}
+
+.detail-value {
+    font-weight: 500;
+    color: #333;
+    text-align: right;
+    flex: 1;
+    margin-left: 1rem;
+}
+
+/* Document List */
+.document-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.document-item {
+    padding: 1rem;
+    border: 1px solid #f0f0f0;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    background: #fafbfc;
+    transition: all 0.2s ease;
+}
+
+.document-item:hover {
+    background: #f0f2f5;
+    border-color: #d1d5db;
+}
+
+.document-item:last-child {
+    margin-bottom: 0;
+}
+
+.document-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.document-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.document-type {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 1rem;
+    background: #e3f2fd;
+    color: #1976d2;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* No Data Container */
+.no-data-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    text-align: center;
+}
+
+.no-data-container lightning-icon {
+    color: #c9c7c5;
+    margin-bottom: 1rem;
+}
+
+.no-data-container p {
+    font-size: 1rem;
+    color: #706e6b;
+    margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .document-tab-container {
+        padding: 1rem;
+    }
+    
+    .document-summary {
+        grid-template-columns: 1fr;
+    }
+    
+    .summary-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .summary-value {
+        margin-top: 0.25rem;
+    }
+    
+    .document-details {
+        grid-template-columns: 1fr;
+    }
+    
+    .detail-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .detail-value {
+        text-align: left;
+        margin-left: 0;
+        margin-top: 0.25rem;
+    }
+    
+    .document-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .document-type {
+        margin-top: 0.5rem;
+    }
+}
+
+/* RAY'S ATTACH DOCUMENTS SECTION - TRINITY PROFESSIONAL STYLING */
+.attach-documents-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 2px solid #0176d3;
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 8px rgba(1, 118, 211, 0.1);
+}
+
+.attach-documents-button {
+    flex-shrink: 0;
+}
+
+/* RAY'S CLICKABLE DOCUMENT COUNT DISPLAY */
+.docs-attached-display {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #e8f4fd;
+    border: 1px solid #0176d3;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.docs-attached-display:hover {
+    background: #d1e7f7;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(1, 118, 211, 0.2);
+}
+
+.docs-count-text {
+    font-weight: 600;
+    color: #0176d3;
+    font-size: 0.875rem;
+}
+
+/* Hidden file upload for bulk functionality */
+.hidden-upload {
+    display: none;
+}
+
+/* Enhanced document info styling */
+.document-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e5e5;
+}
+
+.docs-help {
+    font-size: 0.875rem;
+    color: #706e6b;
+    font-style: italic;
+}
+
+/* TRINITY ENHANCEMENT: Professional Document Metadata Display */
+.document-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f0f0f0;
+}
+
+.file-size,
+.file-category,
+.file-date,
+.file-owner {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-weight: 500;
+}
+
+.file-size {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.file-category {
+    background: #f3e5f5;
+    color: #7b1fa2;
+    font-weight: 600;
+}
+
+.file-date {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.file-owner {
+    background: #e8f5e8;
+    color: #388e3c;
+}
+
+/* TRINITY ENHANCEMENT: Document Actions Styling */
+.document-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f0f0f0;
+}
+
+/* TRINITY ENHANCEMENT: Professional Document Name Link */
+.document-name-link {
+    background: none;
+    border: none;
+    color: #0176d3;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    text-decoration: none;
+    padding: 0;
+    text-align: left;
+    transition: color 0.2s ease;
+}
+
+.document-name-link:hover {
+    color: #014486;
+    text-decoration: underline;
+}
+
+/* TRINITY ENHANCEMENT: Document Type Grid Styling */
+.document-type-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.doc-type-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border: 1px solid #e5e5e5;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.doc-type-item:hover {
+    background: #f0f2f5;
+    border-color: #0176d3;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(1, 118, 211, 0.1);
+}
+
+.doc-type-content {
+    flex: 1;
+}
+
+.doc-type-content strong {
+    display: block;
+    color: #333;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.doc-type-content p {
+    color: #706e6b;
+    font-size: 0.75rem;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* TRINITY ENHANCEMENT: No Documents State */
+.no-documents-section {
+    text-align: center;
+    padding: 2rem;
+}
+
+.no-documents-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    color: #706e6b;
+}
+
+.no-documents-placeholder lightning-icon {
+    color: #c9c7c5;
+}
+
+.upload-prompt {
+    font-style: italic;
+    color: #0176d3;
+}
+
+/* TRINITY ENHANCEMENT: Viewer Instructions */
+.viewer-instructions {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-left: 4px solid #0176d3;
+    border-radius: 0.5rem;
+}
+
+.viewer-instructions p {
+    margin: 0 0 0.5rem 0;
+    font-weight: 600;
+    color: #333;
+}
+
+.viewer-instructions ul {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.viewer-instructions li {
+    margin-bottom: 0.25rem;
+    color: #706e6b;
+    font-size: 0.875rem;
+}

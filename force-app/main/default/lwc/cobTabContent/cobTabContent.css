@@ -1,0 +1,249 @@
+/* TRINITY ENHANCEMENT: Professional Medical Billing COB Interface - Modal Optimized */
+.cob-tab-container {
+    padding: 0.75rem;
+    background-color: #f8fafc;
+    min-height: 150px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.loading-container,
+.error-container,
+.no-data-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+}
+
+.error-message {
+    color: #c23934;
+    margin-left: 0.5rem;
+}
+
+.tab-section-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 3px solid #3182ce;
+    background: linear-gradient(90deg, #3182ce 0%, #63b3ed 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a202c;
+    margin: 0 0 0.25rem 0;
+}
+
+.section-subtitle {
+    color: #706e6b;
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.cob-summary-card,
+.data-card {
+    background: #ffffff;
+    border: 1px solid #dddbda;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.2s ease;
+}
+
+.cob-summary-card:hover,
+.data-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.cob-summary-card h4,
+.data-card h4 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1rem 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #181818;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 0.25rem;
+}
+
+.summary-label {
+    font-size: 0.875rem;
+    color: #706e6b;
+    font-weight: 500;
+}
+
+.summary-value {
+    font-size: 0.875rem;
+    color: #181818;
+    font-weight: 600;
+}
+
+.primary-payer-card {
+    border-left: 4px solid #0176d3;
+}
+
+.secondary-payers-card {
+    border-left: 4px solid #ffb75d;
+}
+
+.tertiary-payers-card {
+    border-left: 4px solid #4bca81;
+}
+
+.payer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.payer-info {
+    flex: 1;
+}
+
+.payer-name {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #181818;
+    margin-bottom: 0.25rem;
+}
+
+.payer-id {
+    font-size: 0.875rem;
+    color: #706e6b;
+}
+
+.payer-rank {
+    background: #0176d3;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.secondary-payer .payer-rank {
+    background: #ffb75d;
+    color: #181818;
+}
+
+.tertiary-payer .payer-rank {
+    background: #4bca81;
+    color: white;
+}
+
+.payer-coverage {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+}
+
+.coverage-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: #f3f2f2;
+    border-radius: 0.25rem;
+}
+
+.coverage-label {
+    font-size: 0.875rem;
+    color: #706e6b;
+    font-weight: 500;
+}
+
+.coverage-value {
+    font-size: 0.875rem;
+    color: #181818;
+    font-weight: 600;
+}
+
+.payer-notes {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: #f3f2f2;
+    border-radius: 0.25rem;
+    border-left: 4px solid #0176d3;
+}
+
+.payer-notes h5 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #0176d3;
+}
+
+.payer-notes p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #181818;
+    line-height: 1.4;
+}
+
+.payer-item {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e5e5;
+}
+
+.payer-item:last-child {
+    margin-bottom: 0;
+}
+
+/* Status Classes */
+.status-active {
+    color: #4bca81;
+    font-weight: 600;
+}
+
+.status-inactive {
+    color: #c23934;
+    font-weight: 600;
+}
+
+.status-pending {
+    color: #ffb75d;
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .payer-header {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .summary-grid,
+    .payer-coverage {
+        grid-template-columns: 1fr;
+    }
+}

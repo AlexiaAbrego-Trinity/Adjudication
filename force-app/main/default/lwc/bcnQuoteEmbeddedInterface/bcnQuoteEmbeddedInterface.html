@@ -67,6 +67,17 @@
                                 <span class="bill-value">{billInvoiceId}</span>
                             </template>
                         </div>
+                        <!-- RAY FEEDBACK #10: Total Paid display in Bill Header -->
+                        <div class="bill-info-item">
+                            <lightning-icon icon-name="standard:currency" size="xx-small" class="bill-icon"></lightning-icon>
+                            <span class="bill-label">Total Paid:</span>
+                            <template if:true={billTotalPaidIsNull}>
+                                <span class="bill-value bill-value-null">{billTotalPaid}</span>
+                            </template>
+                            <template if:false={billTotalPaidIsNull}>
+                                <span class="bill-value">{billTotalPaid}</span>
+                            </template>
+                        </div>
                     </div>
                 </div>
 

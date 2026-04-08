@@ -1,0 +1,99 @@
+<template>
+    <div class="restrictions-tab-container">
+        <!-- Loading State -->
+        <template if:true={isLoading}>
+            <div class="loading-container">
+                <lightning-spinner alternative-text="Loading restrictions data..." size="medium"></lightning-spinner>
+                <p>Loading treatment restrictions...</p>
+            </div>
+        </template>
+
+        <!-- Error State -->
+        <template if:true={error}>
+            <div class="error-container">
+                <lightning-icon icon-name="utility:error" variant="error" size="small"></lightning-icon>
+                <p class="error-message">Unable to load restrictions data. Please contact your administrator.</p>
+            </div>
+        </template>
+
+        <!-- Data Display -->
+        <template if:true={hasRestrictionsData}>
+            <div class="tab-section-header">
+                <h3 class="section-title">
+                    <lightning-icon icon-name="standard:restriction" size="small"></lightning-icon>
+                    Treatment Restrictions - {memberAccountInfo.accountName}
+                </h3>
+                <p class="section-subtitle">Treatment limitations and authorization requirements for this Member Account</p>
+            </div>
+
+            <div class="medical-data-display">
+                <template for:each={restrictions} for:item="restriction">
+                    <div key={restriction.id} class="data-card restriction-card">
+                        <div class="restriction-header">
+                            <div class="restriction-title">
+                                <lightning-icon icon-name="utility:ban" size="small"></lightning-icon>
+                                <h4>{restriction.restrictionType}</h4>
+                                <span class={restriction.statusClass}>{restriction.status}</span>
+                            </div>
+                            <div class="restriction-dates">
+                                <span class="date-label">Effective Date:</span>
+                                <span class="date-value">{restriction.effectiveDate}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="restriction-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Category:</span>
+                                <span class="detail-value">{restriction.category}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Severity:</span>
+                                <span class="detail-value">{restriction.severity}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Authorization Required:</span>
+                                <span class="detail-value">{restriction.authorizationRequired}</span>
+                            </div>
+                            <template if:true={restriction.description}>
+                                <div class="detail-row">
+                                    <span class="detail-label">Description:</span>
+                                    <span class="detail-value">{restriction.description}</span>
+                                </div>
+                            </template>
+                        </div>
+
+                        <template if:true={restriction.notes}>
+                            <div class="restriction-notes">
+                                <h5>Restriction Notes:</h5>
+                                <p>{restriction.notes}</p>
+                            </div>
+                        </template>
+
+                        <template if:true={restriction.treatmentLimitations}>
+                            <div class="treatment-limitations">
+                                <h5>Treatment Limitations:</h5>
+                                <ul>
+                                    <template for:each={restriction.treatmentLimitations} for:item="limitation">
+                                        <li key={limitation.id}>{limitation.description}</li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+        <!-- No Data State -->
+        <template if:false={hasRestrictionsData}>
+            <template if:false={isLoading}>
+                <template if:false={error}>
+                    <div class="no-data-container">
+                        <lightning-icon icon-name="utility:info" size="small"></lightning-icon>
+                        <p>No treatment restrictions found for this case.</p>
+                    </div>
+                </template>
+            </template>
+        </template>
+    </div>
+</template>

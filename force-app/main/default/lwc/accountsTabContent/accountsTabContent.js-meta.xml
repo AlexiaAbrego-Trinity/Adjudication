@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>64.0</apiVersion>
+    <isExposed>true</isExposed>
+    <targets>
+        <target>lightning__RecordPage</target>
+        <target>lightning__AppPage</target>
+        <target>lightning__HomePage</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__RecordPage">
+            <objects>
+                <object>Case</object>
+                <object>Bill__c</object>
+                <object>Member_Account__c</object>
+            </objects>
+        </targetConfig>
+    </targetConfigs>
+    <masterLabel>Accounts Tab Content</masterLabel>
+    <description>Ray's Member Account information display with MSA/PCA/SAK fund balances, effective dates, and account status for Claims adjudication review</description>
+</LightningComponentBundle>

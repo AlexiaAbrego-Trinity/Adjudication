@@ -1,0 +1,175 @@
+<template>
+    <div class="document-management-container">
+        <!-- Loading State -->
+        <template if:true={isLoading}>
+            <div class="loading-container">
+                <lightning-spinner alternative-text="Loading documents..." size="medium"></lightning-spinner>
+                <p>Loading document information...</p>
+            </div>
+        </template>
+
+        <!-- Error State -->
+        <template if:true={error}>
+            <div class="error-container">
+                <lightning-icon icon-name="utility:error" variant="error" size="small"></lightning-icon>
+                <p class="error-message">Unable to load documents. Please contact your administrator.</p>
+            </div>
+        </template>
+
+        <!-- Document Management Interface -->
+        <template if:false={isLoading}>
+            <div class="tab-section-header">
+                <h3 class="section-title">
+                    <lightning-icon icon-name="standard:file" size="small"></lightning-icon>
+                    Document Management
+                </h3>
+                <p class="section-subtitle">BCN/Quote documents, attachments, and records per Ray's requirements</p>
+            </div>
+
+            <!-- RAY'S DOCUMENT UPLOAD SECTION -->
+            <div class="data-card document-upload-section">
+                <h4>
+                    <lightning-icon icon-name="utility:upload" size="small"></lightning-icon>
+                    Document Upload & Management
+                </h4>
+                <p>Upload and manage documents related to this BCN/Quote case. Supports paper scans, EDI imports, and supporting records.</p>
+                
+                <div class="upload-section">
+                    <!-- RAY'S REQUIREMENT: Dedicated "[Attach Documents]" Button -->
+                    <div class="attach-documents-section">
+                        <lightning-button
+                            label="Attach Documents"
+                            icon-name="utility:attach"
+                            variant="brand"
+                            onclick={handleAttachDocuments}
+                            class="attach-documents-button">
+                        </lightning-button>
+
+                        <!-- RAY'S REQUIREMENT: Clickable document count display -->
+                        <template if:true={documentCount}>
+                            <div class="docs-attached-display" onclick={handleViewDocuments} title="Click to view documents, Alt+Click to open in native application">
+                                <lightning-icon icon-name="utility:file" size="small"></lightning-icon>
+                                <span class="docs-count-text">{documentCount} Docs Attached</span>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Hidden file upload for bulk functionality -->
+                    <div class="hidden-upload">
+                        <lightning-file-upload
+                            label=""
+                            name="fileUploader"
+                            accept={acceptedFormats}
+                            record-id={recordId}
+                            onuploadfinished={handleUploadFinished}
+                            multiple>
+                        </lightning-file-upload>
+                    </div>
+
+                    <div class="document-info">
+                        <span class="docs-help">Use "Attach Documents" button above for bulk desktop folder selection</span>
+                        <span class="docs-help">Click document count to view files, Alt+Click to open in native application</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RAY'S DOCUMENT TYPES SECTION -->
+            <div class="data-card document-types-section">
+                <h4>
+                    <lightning-icon icon-name="utility:file" size="small"></lightning-icon>
+                    Supported Document Types
+                </h4>
+                <div class="document-type-grid">
+                    <div class="doc-type-item">
+                        <lightning-icon icon-name="utility:pdf_ext" size="small"></lightning-icon>
+                        <div class="doc-type-content">
+                            <strong>Paper Scan (PDF)</strong>
+                            <p>Original bill pages and supporting records (1-200 pages)</p>
+                        </div>
+                    </div>
+                    <div class="doc-type-item">
+                        <lightning-icon icon-name="utility:database" size="small"></lightning-icon>
+                        <div class="doc-type-content">
+                            <strong>EDI Import (Excel/CSV)</strong>
+                            <p>Digital claim data with supporting documentation</p>
+                        </div>
+                    </div>
+                    <div class="doc-type-item">
+                        <lightning-icon icon-name="utility:record" size="small"></lightning-icon>
+                        <div class="doc-type-content">
+                            <strong>Medical Records (Word/PDF)</strong>
+                            <p>Supporting medical documentation and appeal materials</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- REAL DOCUMENT LIST -->
+            <template if:true={hasFiles}>
+                <div class="data-card document-list-section">
+                    <h4>
+                        <lightning-icon icon-name="utility:preview" size="small"></lightning-icon>
+                        Attached Documents ({documentCount})
+                    </h4>
+                    
+                    <div class="document-list">
+                        <template for:each={files} for:item="file">
+                            <div key={file.id} class="document-item">
+                                <div class="document-icon">
+                                    <lightning-icon icon-name={file.iconName} size="small"></lightning-icon>
+                                </div>
+                                <div class="document-details">
+                                    <button 
+                                        class="document-name-link"
+                                        data-file-id={file.id}
+                                        data-file-name={file.title}
+                                        onclick={handleFilePreview}>
+                                        {file.title}
+                                    </button>
+                                    <div class="document-meta">
+                                        <span class="file-size">{file.formattedSize}</span>
+                                        <span class="file-category">{file.documentCategory}</span>
+                                        <span class="file-date">Modified: {file.formattedModifiedDate}</span>
+                                        <span class="file-owner">By: {file.ownerName}</span>
+                                    </div>
+                                </div>
+                                <div class="document-actions">
+                                    <lightning-button-icon
+                                        icon-name="utility:preview"
+                                        variant="border-filled"
+                                        alternative-text="Preview"
+                                        title="Preview Document"
+                                        data-file-id={file.id}
+                                        onclick={handleFilePreview}>
+                                    </lightning-button-icon>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    
+                    <div class="viewer-instructions">
+                        <p><strong>Ray's Instructions:</strong></p>
+                        <ul>
+                            <li>Left click: View PDF in browser, display button for Word/Excel</li>
+                            <li>Alt + click: Launch in Windows native application</li>
+                            <li>Supports all document types from desktop folder import</li>
+                        </ul>
+                    </div>
+                </div>
+            </template>
+
+            <!-- No Documents State -->
+            <template if:false={hasFiles}>
+                <template if:false={error}>
+                    <div class="data-card no-documents-section">
+                        <div class="no-documents-placeholder">
+                            <lightning-icon icon-name="utility:file" size="large"></lightning-icon>
+                            <p>No documents attached to this BCN/Quote case</p>
+                            <p class="upload-prompt">Use the upload section above to attach documents</p>
+                        </div>
+                    </div>
+                </template>
+            </template>
+        </template>
+    </div>
+</template>

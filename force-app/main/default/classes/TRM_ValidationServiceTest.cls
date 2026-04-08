@@ -24,16 +24,17 @@ private class TRM_ValidationServiceTest {
         insert testProvider;
 
         // Create test Member Account with balance
+        // MVADM-188 FIX: Use zsnTotalAmount__c (Cash Balance) so TRM_Available_Funds__c formula resolves correctly
         Member_Account__c testMemberAccount = new Member_Account__c(
             Name = 'Test Member Account',
-            BalanceAccrued__c = 10000.00
+            zsnTotalAmount__c = 10000.00
         );
         insert testMemberAccount;
 
         // Create second Member Account for relational tests
         Member_Account__c secondMemberAccount = new Member_Account__c(
             Name = 'Second Member Account',
-            BalanceAccrued__c = 5000.00
+            zsnTotalAmount__c = 5000.00
         );
         insert secondMemberAccount;
 
@@ -438,14 +439,16 @@ private class TRM_ValidationServiceTest {
             TRM_ValidationService.validateBCNQuoteForAdjudication(testCase.Id);
         Test.stopTest();
 
+        // FIX: line_payment_exceeds_charge is now a WARNING, not an error
+        // Search in result.warnings instead of result.lineItemFailures
         Boolean foundRule = false;
-        for (TRM_ValidationService.ValidationFailure f : result.lineItemFailures) {
+        for (TRM_ValidationService.ValidationFailure f : result.warnings) {
             if (f.ruleId == 'line_payment_exceeds_charge') {
                 foundRule = true;
                 break;
             }
         }
-        System.assert(foundRule, 'Should detect payment exceeding charge. Failures: ' + result.lineItemFailures);
+        System.assert(foundRule, 'Should detect payment exceeding charge. Warnings: ' + result.warnings);
     }
 
     @isTest
@@ -534,6 +537,10 @@ private class TRM_ValidationServiceTest {
     // Relational Integrity Validation Tests
     // ============================================================
 
+    // COMMENTED OUT: relational_invalid_account_references validation was removed from TRM_ValidationService.cls
+    // Related to MVADM-188 - Business process allows multiple member accounts per bill
+    // See TRM_ValidationService.cls lines 460-496 for details
+    /*
     @isTest
     static void test_Relational_InvalidAccountReference_Fails() {
         Bill__c testBill = getTestBill();
@@ -566,6 +573,7 @@ private class TRM_ValidationServiceTest {
         }
         System.assert(foundRule, 'Should detect invalid account reference. Failures: ' + result.relationalIntegrityFailures);
     }
+    */
 
     // ============================================================
     // Validation Wrapper Tests

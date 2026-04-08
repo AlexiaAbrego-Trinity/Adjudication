@@ -1,0 +1,136 @@
+<template>
+    <div class="rx-tab-container">
+        <!-- Loading State -->
+        <template if:true={isLoading}>
+            <div class="loading-container">
+                <lightning-spinner alternative-text="Loading Rx data..." size="medium"></lightning-spinner>
+                <p>Loading prescription coverage information...</p>
+            </div>
+        </template>
+
+        <!-- Error State -->
+        <template if:true={error}>
+            <div class="error-container">
+                <lightning-icon icon-name="utility:error" variant="error" size="small"></lightning-icon>
+                <p class="error-message">Unable to load prescription data. Please contact your administrator.</p>
+            </div>
+        </template>
+
+        <!-- Data Display -->
+        <template if:true={hasRxData}>
+            <div class="tab-section-header">
+                <h3 class="section-title">
+                    <lightning-icon icon-name="standard:medication" size="small"></lightning-icon>
+                    Prescription Coverage Information
+                </h3>
+                <p class="section-subtitle">Prescription data and coverage details for Case {rxData.caseNumber}</p>
+            </div>
+
+            <!-- Basic RX Information -->
+            <template if:true={hasBasicRxInfo}>
+                <div class="data-card rx-info-card">
+                    <h4>
+                        <lightning-icon icon-name="utility:prescription" size="small"></lightning-icon>
+                        Prescription Details
+                    </h4>
+                    <div class="summary-grid">
+                        <template if:true={rxData.rxCategory}>
+                            <div class="summary-item">
+                                <span class="summary-label">RX Category:</span>
+                                <span class="summary-value">{rxData.rxCategory}</span>
+                            </div>
+                        </template>
+                        <template if:true={rxData.rxDescription}>
+                            <div class="summary-item">
+                                <span class="summary-label">Medications:</span>
+                                <span class="summary-value">{rxData.rxDescription}</span>
+                            </div>
+                        </template>
+                        <template if:true={rxData.rxDescription2}>
+                            <div class="summary-item">
+                                <span class="summary-label">Description:</span>
+                                <span class="summary-value">{rxData.rxDescription2}</span>
+                            </div>
+                        </template>
+                        <template if:true={rxData.calculationMethodRx}>
+                            <div class="summary-item">
+                                <span class="summary-label">Calculation Method:</span>
+                                <span class="summary-value">{rxData.calculationMethodRx}</span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- PBM Information -->
+            <template if:true={hasPbmInfo}>
+                <div class="data-card pbm-info-card">
+                    <h4>
+                        <lightning-icon icon-name="utility:database" size="small"></lightning-icon>
+                        PBM Invoice Information
+                    </h4>
+                    <div class="summary-grid">
+                        <template if:true={rxData.pbmInvoiceNumber}>
+                            <div class="summary-item">
+                                <span class="summary-label">PBM Invoice Number:</span>
+                                <span class="summary-value">{rxData.pbmInvoiceNumber}</span>
+                            </div>
+                        </template>
+                        <template if:true={rxData.pbmInvoiceMemberId}>
+                            <div class="summary-item">
+                                <span class="summary-label">PBM Member ID:</span>
+                                <span class="summary-value">{rxData.pbmInvoiceMemberId}</span>
+                            </div>
+                        </template>
+                        <div class="summary-item">
+                            <span class="summary-label">Pharmacy Reprocess:</span>
+                            <span class="summary-value">{rxData.pharmacyReprocess}</span>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Account Information -->
+            <template if:true={hasAccountInfo}>
+                <div class="data-card account-info-card">
+                    <h4>
+                        <lightning-icon icon-name="standard:account" size="small"></lightning-icon>
+                        Member Account Information
+                    </h4>
+                    <div class="summary-grid">
+                        <template if:true={rxData.memberAccountName}>
+                            <div class="summary-item">
+                                <span class="summary-label">Member Account:</span>
+                                <span class="summary-value">{rxData.memberAccountName}</span>
+                            </div>
+                        </template>
+                        <template if:true={rxData.sakStatus}>
+                            <div class="summary-item">
+                                <span class="summary-label">SAK Status:</span>
+                                <span class="summary-value">{rxData.sakStatus}</span>
+                            </div>
+                        </template>
+                        <template if:true={rxData.accountExpirationDate}>
+                            <div class="summary-item">
+                                <span class="summary-label">Account Expiration:</span>
+                                <span class="summary-value">{rxData.accountExpirationDate}</span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </template>
+
+        <!-- No Data State -->
+        <template if:false={hasRxData}>
+            <template if:false={isLoading}>
+                <template if:false={error}>
+                    <div class="no-data-container">
+                        <lightning-icon icon-name="utility:info" size="small"></lightning-icon>
+                        <p>No prescription coverage data available for this case.</p>
+                    </div>
+                </template>
+            </template>
+        </template>
+    </div>
+</template>

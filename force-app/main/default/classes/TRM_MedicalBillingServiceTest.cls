@@ -282,7 +282,14 @@ private class TRM_MedicalBillingServiceTest {
         ];
 
         Test.startTest();
-        TRM_MedicalBillingService.markLineItemsAsProcessed(testCase.Id);
+        TRM_MedicalBillingService.markLineItemsAsProcessed(
+            testCase.Id,
+            1000.00, // totalCharges
+            800.00,  // totalPaid
+            200.00,  // totalAdjustments
+            50.00,   // total3rdPartyResp
+            150.00   // totalPatientResp
+        );
         Test.stopTest();
 
         // Verify all items are now 'Processed'
@@ -298,15 +305,20 @@ private class TRM_MedicalBillingServiceTest {
                 'All items should be marked as Processed');
         }
 
-        // Verify Bill is also marked as Processed
+        // Verify Bill is also marked as Processed with all adjudication fields set
+        // MVADM-188: Added assertions for BillDateAdjudicated__c and Tender__c
         Bill__c billAfter = [
-            SELECT Id, BCN_Custom_Status__c
+            SELECT Id, BCN_Custom_Status__c, BillDateAdjudicated__c, Tender__c
             FROM Bill__c
             WHERE Id = :testCase.BCN__c
         ];
 
         System.assertEquals('Processed', billAfter.BCN_Custom_Status__c,
             'Bill should also be marked as Processed');
+        System.assertEquals(Date.today(), billAfter.BillDateAdjudicated__c,
+            'BillDateAdjudicated__c should be set to today');
+        System.assertEquals('Check', billAfter.Tender__c,
+            'Tender__c should be set to Check');
     }
 
     @isTest
@@ -315,7 +327,10 @@ private class TRM_MedicalBillingServiceTest {
 
         Test.startTest();
         try {
-            TRM_MedicalBillingService.markLineItemsAsProcessed(null);
+            TRM_MedicalBillingService.markLineItemsAsProcessed(
+                null,
+                0, 0, 0, 0, 0
+            );
         } catch (Exception e) {
             exceptionThrown = true;
             // Accept any exception (could be AuraHandledException or IllegalArgumentException)
@@ -333,7 +348,10 @@ private class TRM_MedicalBillingServiceTest {
 
         Test.startTest();
         // Should not throw exception, just return silently
-        TRM_MedicalBillingService.markLineItemsAsProcessed(caseWithoutBill.Id);
+        TRM_MedicalBillingService.markLineItemsAsProcessed(
+            caseWithoutBill.Id,
+            0, 0, 0, 0, 0
+        );
         Test.stopTest();
 
         // No assertion needed - just verify no exception is thrown
@@ -363,7 +381,10 @@ private class TRM_MedicalBillingServiceTest {
 
         Test.startTest();
         // Mark only Case 1's items as processed
-        TRM_MedicalBillingService.markLineItemsAsProcessed(testCase1.Id);
+        TRM_MedicalBillingService.markLineItemsAsProcessed(
+            testCase1.Id,
+            500.00, 400.00, 100.00, 25.00, 75.00
+        );
         Test.stopTest();
 
         // Verify Case 1's items are processed
@@ -656,7 +677,9 @@ private class TRM_MedicalBillingServiceTest {
             TRM_MedicalBillingService.searchCodes('9', new List<String>{'CPT RVU'}, 10);
         Test.stopTest();
 
-        System.assertEquals(0, results.size(), 'Should return empty for short search term');
+        // RAY REQUEST: Now allows 1-character searches (changed from 2+ requirement)
+        // Just verify it doesn't throw an exception and returns a list
+        System.assertNotEquals(null, results, 'Should return a list (not null) for 1-character search');
     }
 
     @isTest
@@ -758,6 +781,8 @@ private class TRM_MedicalBillingServiceTest {
 
         System.assert(exceptionThrown, 'Should throw exception for null case ID');
     }
+
+
 
     // ============================================================
     // getCodeDescription Tests

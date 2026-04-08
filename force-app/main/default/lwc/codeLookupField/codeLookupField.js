@@ -94,7 +94,8 @@ export default class CodeLookupField extends LightningElement {
     }
 
     /**
-     * Handle input - debounced search
+     * Handle input - NO automatic search (CLIENT REQUEST: dropdown interrupts fast data entry)
+     * User must press Enter to search manually
      */
     handleInput(event) {
         this.searchTerm = event.target.value;
@@ -102,24 +103,18 @@ export default class CodeLookupField extends LightningElement {
         // v2.7.2: Clear validation error when user starts typing
         this.validationError = '';
 
-        // Clear previous timeout
-        if (this.searchTimeout) {
-            clearTimeout(this.searchTimeout);
-        }
-
-        // Debounce search
-        this.searchTimeout = setTimeout(() => {
-            this.performSearch();
-        }, 300);
+        // CLIENT REQUEST: NO automatic search - only update value
+        // User presses Enter to search, or Tab to validate and save
     }
 
     /**
      * Perform search via Apex
      * Format results to show "Description (Code)" for better UX
+     * CLIENT REQUEST: Allow 1-character searches (Remark Codes like "2", "3", "4")
      */
     async performSearch() {
-        // Minimum 2 characters
-        if (!this.searchTerm || this.searchTerm.length < 2) {
+        // Allow search with 1+ characters (Remark Codes can be single digit)
+        if (!this.searchTerm || this.searchTerm.trim() === '') {
             this.searchResults = [];
             this.showDropdown = false;
             return;
@@ -186,24 +181,27 @@ export default class CodeLookupField extends LightningElement {
     }
 
     /**
-     * Handle Enter key (input field level)
+     * Handle keyboard shortcuts
+     * CLIENT REQUEST: Enter = Search (show dropdown), Tab = Validate (no dropdown)
      */
     handleKeyDown(event) {
         if (event.key === 'Enter') {
-            if (this.allowCustomEntry) {
-                // Allow custom code entry
-                this.showDropdown = false;
-                this.dispatchEvent(new CustomEvent('codeselected', {
-                    detail: {
-                        fieldName: this.fieldName,
-                        codeName: this.searchTerm,
-                        description: ''
-                    }
-                }));
+            event.preventDefault(); // Prevent form submission
+
+            // Enter = Manual search (show dropdown with results)
+            if (this.searchTerm && this.searchTerm.trim() !== '') {
+                this.performSearch();
             }
         } else if (event.key === 'Escape') {
-            this.showDropdown = false;
+            // CLIENT REQUEST: Escape = Close dropdown AND clear results (reset state)
+            if (this.showDropdown) {
+                event.preventDefault(); // Prevent closing parent modal
+                event.stopPropagation(); // Stop event from bubbling up
+                this.showDropdown = false;
+                this.searchResults = []; // Clear results so dropdown doesn't reappear on focus
+            }
         }
+        // Tab = Validate and save (handled by handleBlur, no action needed here)
     }
 
     /**
@@ -264,12 +262,12 @@ export default class CodeLookupField extends LightningElement {
                 console.log('Code validated and saved:', codeDetails.codeName);
             } else {
                 // Invalid code - show error
-                this.validationError = `Invalid code: "${enteredCode}" not found`;
+                this.validationError = 'Code not found';
                 console.warn('Invalid code entered:', enteredCode);
             }
         } catch (error) {
             // Error fetching code - show validation error
-            this.validationError = `Invalid code: "${enteredCode}" not found`;
+            this.validationError = 'Code not found';
             console.error('Error validating code:', error);
         }
     }

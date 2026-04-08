@@ -626,9 +626,10 @@ public with sharing class TRM_MedicalBillingService {
                           'CPT_HCPCS_NDC__c, Modifier__c, Quantity__c, Charge__c, Other_Ins_Allowed__c, Other_Ins_Paid__c, ' +
                           'Approved_Amount__c, Patient_Responsibility__c, X3rd_Party__c, X3rd_Party_Curr__c, Adjustment_Amount__c, Savings_Fee__c, ' +
                           'Description__c, Code__c, Code__r.Name, Code__r.Description__c, Code__r.Medicare_Covered__c, ' +
-                          'Bill__c, Bill__r.Member_Account__c, Bill__r.Member_Account__r.Name, Bill__r.BCN_Custom_Status__c, Account__c, ' +
+                          'Bill__c, Bill__r.Member_Account__c, Bill__r.Member_Account__r.Name, Bill__r.BCN_Custom_Status__c, ' +
+                          'Bill__r.DateOfServiceFrom__c, Bill__r.DateOfServiceTo__c, Account__c, ' +
                           'Remark_Code_1__c, Remark_Code_2__c, Remark_Code_3__c, Remark_Code_4__c, ' +
-                          'Duplicate_Status__c, Matching_Records__c, Last_Duplicate_Check__c, TRM_BCN_Custom_Status__c FROM Bill_Line_Item__c ' +
+                          'Duplicate_Status__c, Matching_Records__c, Referenced_By__c, Last_Duplicate_Check__c, TRM_BCN_Custom_Status__c, TRM_Line_Item_Category__c FROM Bill_Line_Item__c ' +
                           'WHERE Bill__c IN (SELECT BCN__c FROM Case WHERE Case.Id = :caseId) ' +
                           'ORDER BY Bill_Line_Item_Number__c ASC NULLS LAST, Service_Start_Date__c ASC, CPT_HCPCS_NDC__c ASC';
 
@@ -636,12 +637,13 @@ public with sharing class TRM_MedicalBillingService {
 
             // TRINITY DEFENSIVE CODING: Apply defaults on LOAD only (not on updates)
             // Ray's requirement: Paid field is required (even if $0.00)
-            // This ensures null values display as $0.00 in the grid without breaking partial updates
-            for (Bill_Line_Item__c item : items) {
-                if (item.Approved_Amount__c == null) {
-                    item.Approved_Amount__c = 0.00;
-                }
-            }
+            // UPDATED: Leave null to force manual entry during adjudication
+            // Validation rule 'line_missing_paid_amount' will catch nulls during validation
+            // for (Bill_Line_Item__c item : items) {
+            //     if (item.Approved_Amount__c == null) {
+            //         item.Approved_Amount__c = 0.00;
+            //     }
+            // }
 
             return items;
 
@@ -799,7 +801,7 @@ public with sharing class TRM_MedicalBillingService {
                            Description__c, Code__c, Code__r.Name, Code__r.Description__c, Code__r.Medicare_Covered__c,
                            Bill__c, Bill__r.Member_Account__c, Bill__r.Member_Account__r.Name, Bill__r.BCN_Custom_Status__c,
                            Remark_Code_1__c, Remark_Code_2__c, Remark_Code_3__c, Remark_Code_4__c,
-                           Duplicate_Status__c, Matching_Records__c, Last_Duplicate_Check__c, TRM_BCN_Custom_Status__c
+                           Duplicate_Status__c, Matching_Records__c, Referenced_By__c, Last_Duplicate_Check__c, TRM_BCN_Custom_Status__c
                     FROM Bill_Line_Item__c
                     WHERE Id IN :newItemIds
                     ORDER BY Bill_Line_Item_Number__c ASC NULLS LAST, CreatedDate DESC
@@ -880,7 +882,14 @@ public with sharing class TRM_MedicalBillingService {
      * TRINITY PRINCIPLE: Centralize Bill Line Item operations in MedicalBillingService
      */
     @AuraEnabled
-    public static void markLineItemsAsProcessed(Id caseId) {
+    public static void markLineItemsAsProcessed(
+        Id caseId,
+        Decimal totalCharges,
+        Decimal totalPaid,
+        Decimal totalAdjustments,
+        Decimal total3rdPartyResp,
+        Decimal totalPatientResp
+    ) {
         try {
             if (caseId == null) {
                 throw new IllegalArgumentException('Case ID is required');
@@ -898,6 +907,33 @@ public with sharing class TRM_MedicalBillingService {
             // Get the Bill ID from the first line item
             Id billId = lineItems[0].Bill__c;
 
+            // TRM BILL CATEGORIZATION: Count Medical vs Prescription using formula field
+            // Formula field TRM_Line_Item_Category__c auto-calculates based on code format:
+            // - 11 numeric digits = Prescription (NDC format)
+            // - Otherwise = Medical
+            Integer countMedical = 0;
+            Integer countPrescription = 0;
+
+            for (Bill_Line_Item__c item : lineItems) {
+                if (item.TRM_Line_Item_Category__c == 'Prescription') {
+                    countPrescription++;
+                } else {
+                    countMedical++;
+                }
+            }
+
+            // Determine Bill category based on MAJORITY (Tie = Medical)
+            String billCategory;
+            if (countPrescription > countMedical) {
+                billCategory = 'Prescription';
+            } else {
+                billCategory = 'Medical';
+            }
+
+            System.debug('TRM BILL CATEGORIZATION: Medical=' + countMedical +
+                         ', Prescription=' + countPrescription +
+                         ', Result=' + billCategory);
+
             // Update Line Items status to 'Processed'
             for (Bill_Line_Item__c item : lineItems) {
                 item.TRM_BCN_Custom_Status__c = 'Processed';
@@ -905,31 +941,86 @@ public with sharing class TRM_MedicalBillingService {
 
             update lineItems;
 
-            // RAY FEEDBACK #10: Calculate Total Paid (sum of all Approved Amounts)
-            // Uses same logic as grid's footerTotals.totalPaid calculation
-            Decimal totalPaid = 0;
-            for (Bill_Line_Item__c item : lineItems) {
-                if (item.Approved_Amount__c != null) {
-                    totalPaid += item.Approved_Amount__c;
-                }
-            }
-
-            // ALSO update Bill status to 'Processed' AND Total_Paid__c
+            // ALSO update Bill status to 'Processed' AND save totals snapshot
+            // MVADM-188: Added BillDateAdjudicated__c (same date as processed) and Tender__c = 'Check'
             Bill__c billToUpdate = new Bill__c(
                 Id = billId,
                 BCN_Custom_Status__c = 'Processed',
-                Total_Paid__c = totalPaid
+                TRM_Processed_Date__c = Date.today(),
+                BillDateAdjudicated__c = Date.today(),
+                Tender__c = 'Check',
+                Total_Paid__c = totalPaid,
+                TRM_EOB_Total_Charges__c = totalCharges,
+                TRM_EOB_Total_Paid__c = totalPaid,
+                TRM_EOB_Total_Adjustments__c = totalAdjustments,
+                TRM_EOB_Total_3rd_Party_Resp__c = total3rdPartyResp,
+                TRM_EOB_Total_Patient_Resp__c = totalPatientResp,
+                TRM_payment_lifecycle__c = 'Approved',
+                Integration_Status__c = 'Ready To Sync',
+                TRM_Bill_Category__c = billCategory
             );
 
             update billToUpdate;
 
             System.debug('TRINITY: Marked ' + lineItems.size() + ' line items as Processed for Case: ' + caseId);
             System.debug('TRINITY: Marked Bill as Processed - Bill ID: ' + billId);
-            System.debug('RAY FEEDBACK #10: Updated Total_Paid__c = $' + totalPaid);
+            System.debug('TRINITY: Set Bill.TRM_payment_lifecycle__c = Approved');
+            System.debug('TRINITY: Set Bill.Integration_Status__c = Ready To Sync');
+            System.debug('TRINITY: Processed Date: ' + Date.today().format());
+            System.debug('EOB TOTALS SNAPSHOT: Saved totals at adjudication time:');
+            System.debug('  - Total Charges: $' + totalCharges);
+            System.debug('  - Total Paid: $' + totalPaid);
+            System.debug('  - Total Adjustments: $' + totalAdjustments);
+            System.debug('  - 3rd Party Resp: $' + total3rdPartyResp);
+            System.debug('  - Patient Resp: $' + totalPatientResp);
+
+            // CLIENT REQUEST (2026-02-04): Update Case Status to "Send To Netsuite"
+            // This advances the Case Path after adjudication is complete
+            Case caseToUpdate = new Case(
+                Id = caseId,
+                Status = 'Send To NS',
+                TRM_Last_Status_Change__c = System.now()
+            );
+
+            update caseToUpdate;
+
+            System.debug('CLIENT REQUEST: Updated Case Status to Send To NS - Case ID: ' + caseId);
 
         } catch (Exception e) {
             System.debug('Error marking line items as processed: ' + e.getMessage());
             throw new AuraHandledException('Error marking line items as processed: ' + e.getMessage());
+        }
+    }
+
+    /**
+     * @description Update Bill total charge after line item modifications
+     * @param billId The Bill ID
+     * @param totalCharge The calculated total charge from all line items
+     *
+     * TRINITY: Manual rollup replacement for DLRS (deactivated to prevent UNABLE_TO_LOCK_ROW)
+     * Called after: create, update, delete, clone operations on Bill_Line_Item__c
+     * Replaces: DLRS rollup "Sum_of_Charges_of_Bill_line_item_on_Bill" (deactivated in eobbcnb sandbox)
+     */
+    @AuraEnabled
+    public static void updateBillTotalCharge(Id billId, Decimal totalCharge) {
+        try {
+            if (billId == null) {
+                throw new AuraHandledException('Bill ID is required');
+            }
+
+            // Update Bill with calculated total charge
+            Bill__c bill = new Bill__c(
+                Id = billId,
+                LineItemTotalCharge__c = totalCharge
+            );
+
+            update bill;
+
+            System.debug('TRINITY: Updated Bill total charge: ' + totalCharge + ' for Bill ID: ' + billId);
+
+        } catch (Exception e) {
+            System.debug('Error in updateBillTotalCharge: ' + e.getMessage());
+            throw new AuraHandledException('Error updating Bill total charge: ' + e.getMessage());
         }
     }
 
@@ -992,8 +1083,10 @@ public with sharing class TRM_MedicalBillingService {
             newItem.Remark_Code_3__c = draftItem.Remark_Code_3__c;
             newItem.Remark_Code_4__c = draftItem.Remark_Code_4__c;
 
-            // TRINITY: Initialize adjudication fields to defaults (Ray's requirement: Paid field required even if $0.00)
-            newItem.Approved_Amount__c = 0.00;
+            // TRINITY: Initialize adjudication fields to defaults
+            // RAY'S REQUIREMENT: Approved_Amount__c must be NULL to force manual entry during adjudication
+            // Validation rule 'paid_amount_required' will catch nulls during validation
+            newItem.Approved_Amount__c = null; // UPDATED: Leave null to force manual entry
             newItem.Patient_Responsibility__c = 0.00;
             newItem.X3rd_Party__c = '0.00'; // LEGACY: TEXT field (keeping for backward compatibility)
             newItem.X3rd_Party_Curr__c = 0.00; // TRINITY: Currency field (new standard)
@@ -1016,7 +1109,7 @@ public with sharing class TRM_MedicalBillingService {
                        Description__c, Code__c, Code__r.Name, Code__r.Description__c, Code__r.Medicare_Covered__c,
                        Bill__c, Bill__r.Member_Account__c, Bill__r.Member_Account__r.Name, Bill__r.BCN_Custom_Status__c, Account__c,
                        Remark_Code_1__c, Remark_Code_2__c, Remark_Code_3__c, Remark_Code_4__c,
-                       Duplicate_Status__c, Matching_Records__c, Last_Duplicate_Check__c, TRM_BCN_Custom_Status__c 
+                       Duplicate_Status__c, Matching_Records__c, Referenced_By__c, Last_Duplicate_Check__c, TRM_BCN_Custom_Status__c
                 FROM Bill_Line_Item__c
                 WHERE Id = :newItem.Id
                 LIMIT 1
@@ -1203,15 +1296,35 @@ public with sharing class TRM_MedicalBillingService {
 
             // STEP 3: CLIENT REQUEST - Query ALL Member Accounts across ALL Administrations for this Claimant
             // This allows billing for multiple injuries on the same bill (ex: shoulder + knee)
-            return [
-                SELECT Id, Name, Type__c, Status__c, BalanceAccrued__c,
-                       Administration_Record__c, Administration_Record__r.Name
-                FROM Member_Account__c
-                WHERE Administration_Record__c IN :adminIds
-                AND Status__c = 'Active'
-                ORDER BY Type__c, Name
-                LIMIT 100
-            ];
+            // RAY FEEDBACK: Filter by Active, Active Pending, and SAK statuses
+
+            // CLAIMS DEPARTMENT REQUEST #3 (2026-03-27): Filter FEE accounts for Medivest Claims profile
+            // Get current user's profile to apply conditional filtering
+            String currentProfileName = [
+                SELECT Profile.Name
+                FROM User
+                WHERE Id = :UserInfo.getUserId()
+                LIMIT 1
+            ].Profile.Name;
+
+            // Build dynamic SOQL with conditional Type__c filter
+            String query =
+                'SELECT Id, Name, Type__c, Status__c, BalanceAccrued__c, ' +
+                'Administration_Record__c, Administration_Record__r.Name ' +
+                'FROM Member_Account__c ' +
+                'WHERE Administration_Record__c IN :adminIds ' +
+                'AND Status__c IN (\'Active\', \'Active Pending\', \'SAK\')';
+
+            // CLAIMS REQUEST #3: Hide FEE accounts for "Medivest Claims" profile only
+            // Other users (System Administrators, Accounting) still see FEE accounts
+            if (currentProfileName.toLowerCase().contains('medivest claims')) {
+                query += ' AND Type__c != \'FEE\'';
+                System.debug('CLAIMS REQUEST #3: Filtering FEE accounts for user profile: ' + currentProfileName);
+            }
+
+            query += ' ORDER BY Type__c, Name LIMIT 100';
+
+            return Database.query(query);
 
         } catch (QueryException qe) {
             System.debug('TRINITY ERROR: Query failed in getMemberAccounts: ' + qe.getMessage());
@@ -1267,33 +1380,22 @@ public with sharing class TRM_MedicalBillingService {
 
             List<Code__c> foundCodes;
 
-            // SALESFORCE LIMITATION: SOSL requires minimum 2 characters
-            // CLIENT REQUEST: Support single-character searches for Remark Codes (1, 2, 3, 4)
-            if (searchTerm.length() == 1) {
-                // Use SOQL for single-character searches (SOSL doesn't support this)
-                // Note: Only search in Name field (Description__c is not filterable with LIKE)
-                String likePattern = '%' + String.escapeSingleQuotes(searchTerm) + '%';
+            // CLIENT REQUEST (2026-02-03): Use SOQL for all searches to ensure consistent STARTS WITH behavior
+            // SOSL can have unpredictable tokenization, so we use SOQL LIKE for guaranteed prefix matching
+            String likePattern = String.escapeSingleQuotes(searchTerm) + '%';
 
-                foundCodes = [
-                    SELECT Id, Name, Description__c, DescShort__c, Type__c
-                    FROM Code__c
-                    WHERE Type__c IN :codeTypes
-                    AND Name LIKE :likePattern
-                    ORDER BY Name ASC
-                    LIMIT :limitCount
-                ];
+            foundCodes = [
+                SELECT Id, Name, Description__c, DescShort__c, Type__c
+                FROM Code__c
+                WHERE Type__c IN :codeTypes
+                AND Name LIKE :likePattern
+                ORDER BY Name ASC
+                LIMIT :limitCount
+            ];
 
-            } else {
-                // Use SOSL for 2+ character searches (better performance)
-                String searchQuery = 'FIND \'' + String.escapeSingleQuotes(searchTerm) + '*\' IN ALL FIELDS ' +
-                                   'RETURNING Code__c(Id, Name, Description__c, DescShort__c, Type__c ' +
-                                   'WHERE Type__c IN :codeTypes ' +
-                                   'ORDER BY Name ASC ' +
-                                   'LIMIT ' + limitCount + ')';
-
-                List<List<SObject>> searchResults = Search.query(searchQuery);
-                foundCodes = (List<Code__c>)searchResults[0];
-            }
+            // CLIENT REQUEST (2026-02-03): Sort by length first (shorter codes first), then alphabetically
+            // This ensures exact matches appear first (e.g., "1" before "10" or "100")
+            foundCodes.sort(new CodeLengthComparator());
 
             List<CodeLookupResult> results = new List<CodeLookupResult>();
             for (Code__c code : foundCodes) {
@@ -1959,4 +2061,47 @@ public with sharing class TRM_MedicalBillingService {
         @AuraEnabled public String sakStatus;
         @AuraEnabled public Date accountExpirationDate;
     }
+
+    /**
+     * CLIENT REQUEST (2026-02-03): Comparator for sorting codes by length first, then alphabetically
+     * This ensures shorter/exact matches appear first in search results
+     * Example: Searching "1" returns: "1", "10", "12", "100", "123" (not "1", "10", "100", "12", "123")
+     */
+    public class CodeLengthComparator implements Comparator<Code__c> {
+        public Integer compare(Code__c a, Code__c b) {
+            // First, compare by length (shorter first)
+            if (a.Name.length() != b.Name.length()) {
+                return a.Name.length() - b.Name.length();
+            }
+            // If same length, compare alphabetically
+            return a.Name.compareTo(b.Name);
+        }
+    }
+
+    /**
+     * Check if current user is a System Administrator
+     * Used to conditionally show admin-only features in LWC
+     * CLIENT REQUEST: Show Bill link only to System Administrators
+     */
+    @AuraEnabled(cacheable=true)
+    public static Boolean isCurrentUserSystemAdmin() {
+        try {
+            // Get current user's profile name
+            String profileName = [
+                SELECT Profile.Name
+                FROM User
+                WHERE Id = :UserInfo.getUserId()
+                LIMIT 1
+            ].Profile.Name;
+
+            Boolean isAdmin = profileName == 'System Administrator';
+            System.debug('🔍 TRINITY: User profile: ' + profileName + ', isAdmin: ' + isAdmin);
+
+            return isAdmin;
+        } catch (Exception e) {
+            System.debug('Error checking user profile: ' + e.getMessage());
+            return false;
+        }
+    }
+
 }

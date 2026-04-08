@@ -90,6 +90,11 @@
     height: calc(100% - 75px);
 }
 
+/* CLIENT REQUEST: Adjust height when adjudicated to account for locked banner */
+.custom-grid-container[data-stage="adjudicated"] .grid-container {
+    height: calc(100% - 112px); /* Extra space for locked banner (37px banner + margins) */
+}
+
 /* TRINITY: Professional dual-axis scroll wrapper - SIMPLIFIED */
 .grid-scroll-wrapper {
     overflow-x: scroll !important;
@@ -137,17 +142,19 @@
     background: #f3f4f6;
 }
 
-/* Table styling - TRINITY: Dynamic width calculation */
+/* CLAIMS OPTIMIZATION: Fixed column widths controlled by <colgroup> inline styles */
+/* table-layout: fixed + width: auto = columns use EXACT widths from <col> elements */
+/* If total width > viewport → horizontal scroll (natural overflow behavior) */
 .custom-grid-table {
-    width: 100%;
-    /* TRINITY: Dynamic minimum width based on stage */
-    min-width: 1600px; /* Base width for keying stage */
+    width: auto; /* Let columns determine total width */
+    table-layout: fixed; /* Respect <col> width attributes exactly */
 }
 
-/* TRINITY: Wider table for Bill Review stage - CLEAN APPROACH */
-.custom-grid-container[data-stage="billReview"] .custom-grid-table {
-    min-width: 2800px; /* TRINITY: Wide enough to trigger horizontal scroll */
-}
+/* CLAIMS OPTIMIZATION: Column widths are now controlled EXCLUSIVELY by JavaScript inline styles
+ * e.g., <col data-column="lineNumber" style="width: 40px;">
+ * This ensures no CSS conflicts and allows dynamic width changes from toggleServiceDates(), toggleOIFields(), etc.
+ * Removed static CSS width rules that were redundant with JavaScript-generated inline styles.
+ */
 
 .custom-grid-table th {
     background: #f3f3f3;
@@ -162,6 +169,11 @@
     min-height: 3rem; /* TRINITY: Ensure adequate header height */
     white-space: nowrap; /* TRINITY FIX: Prevent header text wrapping/truncation */
     text-align: left; /* TRINITY: Consistent alignment */
+}
+
+/* CLAIMS FIX: Force header text spans to respect column width */
+.custom-grid-table th span {
+    display: inline-block;
 }
 
 .custom-grid-table td {
@@ -183,7 +195,7 @@
 /* Expandable column styling - TRINITY: Improved readability */
 .expandable-column-header {
     position: relative;
-    min-width: 220px; /* Increased for better readability */
+    /* CLAIMS OPTIMIZATION: Removed min-width - let JavaScript columnWidths control the width */
     padding-right: 1.25rem; /* TRINITY: Extra padding to prevent toggle button overlap with resizer */
 }
 
@@ -225,8 +237,8 @@
 }
 
 .expandable-column {
-    min-width: 220px; /* Increased for better readability */
-    width: 240px;     /* Set comfortable default width */
+    min-width: 150px; /* CLAIMS FIX: Compact width for expandable columns */
+    width: 150px;     /* CLAIMS FIX: Match min-width for consistency */
     padding: 0.75rem 0.5rem;
 }
 
@@ -266,6 +278,10 @@
 }
 
 /* Row styling */
+.data-row {
+    position: relative; /* MVADM-185: Allow tooltips to position correctly */
+}
+
 .data-row:hover {
     background: rgba(1, 118, 211, 0.02);
 }
@@ -309,12 +325,35 @@
     box-shadow: 0 0 3px rgba(1, 118, 211, 0.5);
 }
 
-/* Responsive behavior - TRINITY: Simplified */
-@media (max-width: 1200px) {
-    .custom-grid-table {
-        min-width: 1800px; /* TRINITY: Ensure horizontal scroll on smaller screens */
-    }
+/* TRINITY: Date input container for validation messages */
+.date-input-container {
+    position: relative;
+    width: 100%;
 }
+
+/* TRINITY: Date input validation - Invalid format (red border only, no background) */
+.custom-grid-table .date-input.has-error {
+    border-color: #C23934 !important;
+    box-shadow: 0 0 0 2px rgba(194, 57, 52, 0.2);
+}
+
+.custom-grid-table .date-input.has-error:focus {
+    outline: none;
+    border-color: #C23934;
+    box-shadow: 0 0 5px rgba(194, 57, 52, 0.5);
+}
+
+/* Date validation error message - consistent with codeLookupField */
+.date-validation-error {
+    position: absolute;
+    color: #c23934;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+
+/* Responsive behavior - TRINITY: Simplified */
+/* CLAIMS OPTIMIZATION: Removed min-width media query - columns now use fixed widths from <colgroup> */
 
 /* TRINITY: Mobile responsive */
 @media (max-width: 768px) {
@@ -326,9 +365,7 @@
         max-height: 60vh;
     }
 
-    .custom-grid-table {
-        min-width: 2000px; /* TRINITY: Force horizontal scroll on mobile */
-    }
+    /* CLAIMS: No min-width override needed - table uses fixed column widths */
 }
 
 /* Loading and error states */
@@ -459,86 +496,102 @@
     max-width: var(--field-line-number-width);
 }
 
-/* Column resizer data-column specific widths */
-[data-column="lineNumber"] {
-    width: var(--field-line-number-width);
+/* CLAIMS OPTIMIZATION: Removed [data-column] min-width rules that were overriding <colgroup> widths
+ * These rules were applying to ALL elements with data-column (th, td, col), causing conflicts
+ * Now relying solely on:
+ * 1. Inline styles from JavaScript (e.g., style="width: 40px;")
+ * 2. CSS rules targeting ONLY <col> elements (lines 163-181)
+ * This ensures <colgroup> has full control over column widths
+ */
+
+/* ========================================
+   CLAIMS DEPARTMENT REQUEST #1: Payment Column Colors
+   Background colors for payment fields to improve visual clarity
+   Colors chosen for accessibility (WCAG AA compliant) and distinction
+   Applied to both <th> headers and <td> data cells
+   ======================================== */
+
+/* CLAIMS REQUEST #1: Payment Column Colors - Cohesive Pastel Palette */
+
+/* Charge column - Light pink/red */
+th:has([data-column="charge"]),
+col[data-column="charge"],
+td:has([data-field="Charge__c"]) {
+    background-color: #FFC3C3 !important; /* Soft coral pink */
 }
 
-[data-column="pos"] {
-    min-width: var(--field-pos-width);
+/* OI Allow column - Light peach */
+th:has([data-column="oiAllow"]),
+col[data-column="oiAllow"],
+td:has([data-field="Other_Ins_Allowed__c"]),
+td[data-field="Other_Ins_Allowed__c"] {
+    background-color: #FFE4CC !important; /* Soft peach */
 }
 
-[data-column="revenue"] {
-    min-width: var(--field-revenue-width);
+/* OI Paid column - Light lavender */
+th:has([data-column="oiPaid"]),
+col[data-column="oiPaid"],
+td:has([data-field="Other_Ins_Paid__c"]) {
+    background-color: #E4CCFF !important; /* Soft lavender */
 }
 
-[data-column="cpt"] {
-    min-width: var(--field-hcpcs-cpt-ndc-width);
+/* Paid column - Light green */
+th:has([data-column="paid"]),
+col[data-column="paid"],
+td:has([data-field="Approved_Amount__c"]) {
+    background-color: #CCFFD2 !important; /* Soft mint green */
 }
 
-[data-column="modifier"] {
-    min-width: var(--field-modifier-width);
+/* 3rd Party column - Light blue */
+th:has([data-column="thirdParty"]),
+col[data-column="thirdParty"],
+td:has([data-field="X3rd_Party_Curr__c"]) {
+    background-color: #CCE5FF !important; /* Soft sky blue */
 }
 
-[data-column="quantity"] {
-    min-width: var(--field-quantity-width);
+/* Patient Responsibility column - Light yellow */
+th:has([data-column="patResp"]),
+col[data-column="patResp"],
+td:has([data-field="Patient_Responsibility__c"]) {
+    background-color: #FFFFCC !important; /* Soft lemon yellow */
 }
 
-[data-column="charge"] {
-    min-width: var(--field-charge-width);
+/* CLAIMS REQUEST: Ensure colored columns maintain hover state visibility */
+/* All columns maintain their base color but in a darker tone on hover */
+tr:hover td:has([data-field="Charge__c"]) {
+    background-color: #FFB3B3 !important; /* Darker coral pink (from #FFC3C3) */
 }
 
-[data-column="description"] {
-    min-width: var(--field-description-min-width);
-    max-width: var(--field-description-max-width);
+tr:hover td:has([data-field="Other_Ins_Allowed__c"]),
+tr:hover td[data-field="Other_Ins_Allowed__c"] {
+    background-color: #FFD4B3 !important; /* Darker peach (from #FFE4CC) */
 }
 
-[data-column="paid"],
-[data-column="thirdParty"],
-[data-column="patResp"],
-[data-column="medicare"] {
-    min-width: var(--field-payment-width);
+tr:hover td:has([data-field="Other_Ins_Paid__c"]),
+tr:hover td[data-field="Other_Ins_Paid__c"] {
+    background-color: #D4B3FF !important; /* Darker lavender (from #E4CCFF) */
 }
 
-/* TRINITY FIX: Adjustment and Savings Fee columns */
-[data-column="adjustment"],
-[data-column="savingsFee"] {
-    min-width: var(--field-adjustment-width);
+tr:hover td:has([data-field="Approved_Amount__c"]) {
+    background-color: #B3FFB9 !important; /* Darker mint green (from #CCFFD2) */
 }
 
-/* TRINITY FIX: Remark Code columns */
-[data-column="rc1"],
-[data-column="rc2"],
-[data-column="rc3"],
-[data-column="rc4"] {
-    min-width: var(--field-remark-code-width);
+tr:hover td:has([data-field="X3rd_Party_Curr__c"]) {
+    background-color: #B3D9FF !important; /* Darker sky blue (from #CCE5FF) */
 }
 
-/* TRINITY FIX: Account column */
-[data-column="account"] {
-    min-width: var(--field-account-width);
+tr:hover td:has([data-field="Patient_Responsibility__c"]) {
+    background-color: #FFFFB3 !important; /* Darker lemon yellow (from #FFFFCC) */
 }
 
-/* TRINITY FIX: Specific column header min-widths to prevent truncation */
-th[scope="col"] {
-    min-width: 80px; /* Base minimum for all headers */
-}
-
-/* Longer header names need more space */
-.resizable-column:has([data-column="remarkCodes"]),
-th:has([data-column="remarkCodes"]) {
-    min-width: 140px; /* "Remark Codes" needs more space */
-}
-
-.resizable-column:has([data-column="serviceDates"]),
-th:has([data-column="serviceDates"]) {
-    min-width: 130px; /* "Service Date" needs more space */
-}
-
-.resizable-column:has([data-column="description"]),
-th:has([data-column="description"]) {
-    min-width: 150px; /* "Description" column */
-}
+/* CLAIMS OPTIMIZATION: Removed all column-specific min-width rules that override <colgroup>
+ * Previously had:
+ * - th[scope="col"] { min-width: 80px; }
+ * - remarkCodes { min-width: 140px; }
+ * - description { min-width: 150px; }
+ * These were preventing columns from respecting JavaScript-controlled widths.
+ * Now <colgroup> inline styles have full control.
+ */
 
 /* TRINITY: Medicare status display styling (MVADM-76 - READ-ONLY) */
 .medicare-status-display {
@@ -660,6 +713,35 @@ th:has([data-column="description"]) {
 .grid-row.row-valid,
 .grid-row.draft-row {
     /* Row formatting takes precedence over alternating colors */
+}
+
+/* CLAIMS REQUEST #1: Row validation states override column colors */
+/* Error rows - red background takes full precedence */
+.row-error td {
+    background-color: #FEDED8 !important; /* Override column colors */
+}
+
+.row-error:hover td {
+    background-color: #FDD4CC !important; /* Override column hover colors */
+}
+
+/* Warning rows - orange background takes full precedence */
+.row-warning td {
+    background-color: #FFF4E6 !important; /* Override column colors */
+}
+
+.row-warning:hover td {
+    background-color: #FFECD1 !important; /* Override column hover colors */
+}
+
+/* Valid rows - maintain column colors (don't override) */
+/* Draft rows - gray background takes full precedence */
+.draft-row td {
+    background-color: #f3f3f3 !important; /* Override column colors */
+}
+
+.draft-row:hover td {
+    background-color: #e8e8e8 !important; /* Override column hover colors */
 }
 
 /* TRINITY UX: Context Menu Base Styling */
@@ -917,3 +999,63 @@ th:has([data-column="description"]) {
 /* ========================================
    END RAY FEEDBACK #9: ADJUDICATION OVERLAY
    ======================================== */
+
+/* ========================================
+   MVADM-185: DUPLICATE DETAILS MODAL STYLING
+   ======================================== */
+
+/* Exact match badge - green */
+.exact-match {
+    background-color: #04844b;
+    color: white;
+}
+
+/* Potential match badge - yellow/orange */
+.potential-match {
+    background-color: #fe9339;
+    color: white;
+}
+
+/* Make duplicate icons clickable with hover effect */
+.duplicate-icons-container:hover {
+    opacity: 0.8;
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+}
+
+/* MVADM-185: Allow tooltip to overflow table cell */
+.duplicate-flag-cell {
+    position: relative;
+    overflow: visible !important;
+    z-index: 1;
+}
+
+/* MVADM-185: Increase z-index when hovering to bring tooltip to front */
+.duplicate-flag-cell:hover {
+    z-index: 9999;
+}
+
+/* MVADM-185: Ensure modal appears above everything including tooltips */
+.slds-modal {
+    z-index: 99999 !important;
+}
+
+.slds-backdrop {
+    z-index: 99998 !important;
+}
+
+/* ========================================
+   END MVADM-185: DUPLICATE DETAILS MODAL STYLING
+   ======================================== */
+
+/* ========================================
+   CLAIMS FIX: Stage Selector Dropdown Position
+   ======================================== */
+/* Force stage selector dropdown to appear below the button */
+.slds-listbox.slds-listbox_vertical.slds-dropdown.slds-dropdown_fluid.slds-dropdown_left.slds-dropdown_length-with-icon-10[aria-label="Stage"] {
+    left: auto !important;
+    right: 24px !important;
+    top: 50px !important;
+    position: fixed !important;
+    transform: none !important;
+}

@@ -1,0 +1,262 @@
+<template>
+    <div class="verification-tab-container">
+        <!-- Loading State -->
+        <template if:true={isLoading}>
+            <div class="loading-container">
+                <lightning-spinner alternative-text="Loading verification data..." size="medium"></lightning-spinner>
+                <p>Loading follow-up and verification information...</p>
+            </div>
+        </template>
+
+        <!-- Error State -->
+        <template if:true={error}>
+            <div class="error-container">
+                <lightning-icon icon-name="utility:error" variant="error" size="small"></lightning-icon>
+                <p class="error-message">Unable to load verification data. Please contact your administrator.</p>
+            </div>
+        </template>
+
+        <!-- Data Display -->
+        <template if:true={hasVerificationData}>
+            <div class="tab-section-header">
+                <h3 class="section-title">
+                    <lightning-icon icon-name="standard:approval" size="small"></lightning-icon>
+                    Follow-Up & Verification Management
+                </h3>
+                <p class="section-subtitle">BCN follow-ups, refund tracking, and verification workflow</p>
+            </div>
+
+            <div class="verification-data-display">
+                <!-- BCN Follow-Up Section -->
+                <template if:true={verificationData.bcnFollowUp}>
+                    <div class="data-card bcn-followup-card">
+                        <div class="card-header">
+                            <lightning-icon icon-name="standard:task" size="small"></lightning-icon>
+                            <h4>BCN Follow-Up Management</h4>
+                            <span class="follow-up-status">{verificationData.bcnFollowUp.status}</span>
+                        </div>
+                        
+                        <div class="follow-up-details">
+                            <div class="detail-row">
+                                <span class="detail-label">3-Month Follow-Up:</span>
+                                <span class="detail-value">{verificationData.bcnFollowUp.threeMonthFollowUpDate}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">6-Month Follow-Up:</span>
+                                <span class="detail-value">{verificationData.bcnFollowUp.sixMonthFollowUpDate}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Internal Due Date:</span>
+                                <span class="detail-value">{verificationData.bcnFollowUp.internalDueDate}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">External Due Date:</span>
+                                <span class="detail-value">{verificationData.bcnFollowUp.externalDueDate}</span>
+                            </div>
+                        </div>
+
+                        <template if:true={verificationData.bcnFollowUp.internalNote}>
+                            <div class="follow-up-notes">
+                                <h5>BCN Follow-Up Notes:</h5>
+                                <p>{verificationData.bcnFollowUp.internalNote}</p>
+                            </div>
+                        </template>
+
+                        <template if:true={verificationData.bcnFollowUp.caseNotes}>
+                            <div class="follow-up-notes">
+                                <h5>Case Notes:</h5>
+                                <p>{verificationData.bcnFollowUp.caseNotes}</p>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <!-- Refund Follow-Up Section -->
+                <template if:true={verificationData.refundFollowUp}>
+                    <div class="data-card refund-followup-card">
+                        <div class="card-header">
+                            <lightning-icon icon-name="standard:currency" size="small"></lightning-icon>
+                            <h4>Refund Follow-Up Management</h4>
+                            <span class="refund-status">{verificationData.refundFollowUp.status}</span>
+                        </div>
+                        
+                        <div class="follow-up-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Refund Reason:</span>
+                                <span class="detail-value">{verificationData.refundFollowUp.refundReason}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Request Date:</span>
+                                <span class="detail-value">{verificationData.refundFollowUp.requestDate}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Expected Timeline:</span>
+                                <span class="detail-value">{verificationData.refundFollowUp.expectedTimeline}</span>
+                            </div>
+                        </div>
+
+                        <template if:true={verificationData.refundFollowUp.refundReason}>
+                            <div class="follow-up-notes">
+                                <h5>Refund Reason:</h5>
+                                <p>{verificationData.refundFollowUp.refundReason}</p>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <!-- RAY'S FOLLOW-UP MANAGEMENT INTERFACE -->
+                <!-- BCN Follow-Up Management Section -->
+                <div class="data-card follow-up-management-card">
+                    <div class="card-header">
+                        <lightning-icon icon-name="standard:task2" size="small"></lightning-icon>
+                        <h4>BCN Follow-Up Management</h4>
+                        <span class="management-subtitle">Set dates and notes for BCN review</span>
+                    </div>
+
+                    <div class="follow-up-management-form">
+                        <div class="form-row">
+                            <lightning-input
+                                type="date"
+                                label="BCN Follow-Up Date"
+                                value={bcnFollowUpDate}
+                                onchange={handleBcnDateChange}
+                                class="follow-up-date-input">
+                            </lightning-input>
+                        </div>
+
+                        <div class="form-row">
+                            <lightning-textarea
+                                label="BCN Follow-Up Note"
+                                value={bcnFollowUpNote}
+                                onchange={handleBcnNoteChange}
+                                placeholder="Ex: Funds arrive in 5 days. Adjudicate then."
+                                class="follow-up-note-input">
+                            </lightning-textarea>
+                        </div>
+
+                        <div class="form-actions">
+                            <lightning-button
+                                label="Set BCN Follow-Up"
+                                onclick={handleSetBcnFollowUp}
+                                variant="brand"
+                                disabled={isSavingBcn}
+                                class="follow-up-save-button">
+                            </lightning-button>
+                            <template if:true={isSavingBcn}>
+                                <lightning-spinner alternative-text="Saving..." size="small"></lightning-spinner>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Refund Follow-Up Management Section -->
+                <div class="data-card follow-up-management-card">
+                    <div class="card-header">
+                        <lightning-icon icon-name="standard:currency" size="small"></lightning-icon>
+                        <h4>Refund Follow-Up Management</h4>
+                        <span class="management-subtitle">Separate refund tracking (month to year timeframe)</span>
+                    </div>
+
+                    <div class="follow-up-management-form">
+                        <div class="form-row">
+                            <lightning-input
+                                type="date"
+                                label="Refund Follow-Up Date"
+                                value={refundFollowUpDate}
+                                onchange={handleRefundDateChange}
+                                class="follow-up-date-input">
+                            </lightning-input>
+                        </div>
+
+                        <div class="form-row">
+                            <lightning-textarea
+                                label="Refund Follow-Up Note"
+                                value={refundFollowUpNote}
+                                onchange={handleRefundNoteChange}
+                                placeholder="Ex: Refund request pending approval. Follow up in 30 days."
+                                class="follow-up-note-input">
+                            </lightning-textarea>
+                        </div>
+
+                        <div class="form-actions">
+                            <lightning-button
+                                label="Set Refund Follow-Up"
+                                onclick={handleSetRefundFollowUp}
+                                variant="brand"
+                                disabled={isSavingRefund}
+                                class="follow-up-save-button">
+                            </lightning-button>
+                            <template if:true={isSavingRefund}>
+                                <lightning-spinner alternative-text="Saving..." size="small"></lightning-spinner>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payee Information Section -->
+                <template if:true={payeeInfo}>
+                    <div class="data-card payee-info-card">
+                        <div class="card-header">
+                            <lightning-icon icon-name="standard:contact" size="small"></lightning-icon>
+                            <h4>Payee Information</h4>
+                        </div>
+                        
+                        <div class="payee-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Payee Name:</span>
+                                <span class="detail-value">{payeeInfo.name}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Contact Method:</span>
+                                <span class="detail-value">{payeeInfo.contactMethod}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Last Contact:</span>
+                                <span class="detail-value">{payeeInfo.lastContact}</span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Edit History Section -->
+                <template if:true={editHistory}>
+                    <template if:true={editHistory.length}>
+                        <div class="data-card edit-history-card">
+                            <div class="card-header">
+                                <lightning-icon icon-name="standard:record" size="small"></lightning-icon>
+                                <h4>Recent Edit History</h4>
+                            </div>
+                            
+                            <div class="edit-history-list">
+                                <template for:each={editHistory} for:item="edit">
+                                    <div key={edit.id} class="edit-entry">
+                                        <div class="edit-header">
+                                            <span class="edit-date">{edit.editDate}</span>
+                                            <span class="edit-user">{edit.editedBy}</span>
+                                        </div>
+                                        <div class="edit-details">
+                                            <span class="edit-field">{edit.fieldChanged}:</span>
+                                            <span class="edit-value">{edit.newValue}</span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </template>
+            </div>
+        </template>
+
+        <!-- No Data State -->
+        <template if:false={hasVerificationData}>
+            <template if:false={isLoading}>
+                <template if:false={error}>
+                    <div class="no-data-container">
+                        <lightning-icon icon-name="utility:info" size="small"></lightning-icon>
+                        <p>No verification or follow-up data available for this case.</p>
+                    </div>
+                </template>
+            </template>
+        </template>
+    </div>
+</template>

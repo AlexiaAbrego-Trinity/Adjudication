@@ -20,7 +20,7 @@
                         <span class="slds-text-body_small" style="color: rgba(255, 255, 255, 0.7);">v2.3.6-passed-rules</span>
                     </div>
                     <p class="validation-subtitle">
-                        Case #{caseNumber} • {totalLineItems} Items • {totalCharge}
+                        Case #{caseNumber} • {totalLineItems} Items • Charged: {totalCharge}
                     </p>
                 </div>
             </header>
@@ -306,14 +306,10 @@
                         </lightning-button>
                     </template>
                     <template if:false={canProceed}>
-                        <lightning-button 
-                            label="Close" 
+                        <!-- RAY FEEDBACK #8: Removed "Fix Issues" button - same functionality as "Close" -->
+                        <lightning-button
+                            label="Close"
                             onclick={handleClose}
-                            variant="neutral">
-                        </lightning-button>
-                        <lightning-button 
-                            label="Fix Issues" 
-                            onclick={handleFixIssues}
                             variant="brand">
                         </lightning-button>
                     </template>

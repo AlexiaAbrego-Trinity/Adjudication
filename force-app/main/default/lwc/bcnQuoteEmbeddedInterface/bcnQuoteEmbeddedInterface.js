@@ -109,6 +109,19 @@ export default class BcnQuoteEmbeddedInterface extends LightningElement {
     return !this.billData?.Payee_Name_Label__c && !this.billData?.Payee_Name__r?.Name;
   }
 
+  // RAY FEEDBACK #10: Total Paid display in Bill Header
+  get billTotalPaid() {
+    const value = this.billData?.Total_Paid__c || 0;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(value);
+  }
+
+  get billTotalPaidIsNull() {
+    return !this.billData?.Total_Paid__c || this.billData?.Total_Paid__c === 0;
+  }
+
   get statusAlert() {
     const status = this.caseStatus;
     if (!status) return { level: 'info', text: 'LOADING', class: 'status-info' };
@@ -127,6 +140,9 @@ export default class BcnQuoteEmbeddedInterface extends LightningElement {
         return { level: 'success', text: 'COMPLETED', class: 'status-success' };
       case 'escalated':
         return { level: 'error', text: 'ESCALATED', class: 'status-error' };
+      case 'sync processed':
+        // CLIENT REQUEST (2026-02-03): Display "Send to NetSuite" instead of "SYNC PROCESSED"
+        return { level: 'success', text: 'SEND TO NETSUITE', class: 'status-success' };
       default:
         return { level: 'info', text: status.toUpperCase(), class: 'status-info' };
     }

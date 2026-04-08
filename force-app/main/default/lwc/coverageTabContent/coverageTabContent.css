@@ -1,0 +1,361 @@
+/* TRINITY PROFESSIONAL COVERAGE TAB STYLING */
+
+/* Main Container - TRINITY: Modal optimized sizing */
+.coverage-tab-container {
+    background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
+    padding: 0.75rem;
+    min-height: 150px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Loading Container - TRINITY: Compact for modal */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+}
+
+.loading-container p {
+    margin-top: 1rem;
+    font-size: 1rem;
+    color: #5c6b73;
+}
+
+/* Error Container */
+.error-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    background: #fef7f7;
+    border: 1px solid #f5c6cb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
+.error-message {
+    margin-left: 0.5rem;
+    color: #721c24;
+    font-weight: 500;
+}
+
+/* Tab Section Header */
+.tab-section-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e5e5e5;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0176d3;
+    margin-bottom: 0.5rem;
+}
+
+.section-title lightning-icon {
+    margin-right: 0.75rem;
+}
+
+.section-subtitle {
+    font-size: 1rem;
+    color: #706e6b;
+    margin: 0;
+}
+
+/* Coverage Data Display */
+.coverage-data-display {
+    display: grid;
+    gap: 1.5rem;
+}
+
+/* Data Cards */
+.data-card {
+    background: #ffffff;
+    border: 1px solid #e5e5e5;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.data-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Card Headers */
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.card-header lightning-icon {
+    margin-right: 0.75rem;
+}
+
+.card-header h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+/* Specific Card Types */
+.coverage-summary-card {
+    border-left: 4px solid #4caf50;
+}
+
+.coverage-scenarios-card {
+    border-left: 4px solid #2196f3;
+}
+
+.member-account-card {
+    border-left: 4px solid #ff9800;
+}
+
+/* Coverage Summary */
+.coverage-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    border: 1px solid #e9ecef;
+}
+
+.summary-label {
+    font-weight: 600;
+    color: #706e6b;
+    font-size: 0.875rem;
+}
+
+.summary-value {
+    font-weight: 700;
+    color: #4caf50;
+    font-size: 1rem;
+}
+
+/* Coverage Scenarios */
+.coverage-scenarios {
+    display: grid;
+    gap: 1rem;
+}
+
+.coverage-scenario {
+    padding: 1rem;
+    border: 1px solid #f0f0f0;
+    border-radius: 0.5rem;
+    background: #fafbfc;
+    transition: all 0.2s ease;
+}
+
+.coverage-scenario:hover {
+    background: #f0f2f5;
+    border-color: #d1d5db;
+}
+
+.scenario-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.scenario-type {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.scenario-status {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.scenario-status.active {
+    background: #e8f5e8;
+    color: #2e7d32;
+}
+
+.scenario-status.inactive {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.scenario-status.pending {
+    background: #fff3e0;
+    color: #ef6c00;
+}
+
+.scenario-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #706e6b;
+    font-size: 0.875rem;
+}
+
+.detail-value {
+    font-weight: 500;
+    color: #333;
+    text-align: right;
+    flex: 1;
+    margin-left: 1rem;
+}
+
+/* Member Account Info */
+.member-account-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+/* Coverage Notes */
+.coverage-notes {
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.coverage-notes h5 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 0.5rem 0;
+}
+
+.coverage-notes p {
+    font-size: 0.875rem;
+    color: #5c6b73;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Coverage Limitations */
+.coverage-limitations {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.coverage-limitations h5 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #856404;
+    margin: 0 0 0.75rem 0;
+}
+
+.coverage-limitations ul {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.coverage-limitations li {
+    font-size: 0.875rem;
+    color: #856404;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+/* No Data Container */
+.no-data-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    text-align: center;
+}
+
+.no-data-container lightning-icon {
+    color: #c9c7c5;
+    margin-bottom: 1rem;
+}
+
+.no-data-container p {
+    font-size: 1rem;
+    color: #706e6b;
+    margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .coverage-tab-container {
+        padding: 1rem;
+    }
+    
+    .coverage-summary {
+        grid-template-columns: 1fr;
+    }
+    
+    .summary-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .summary-value {
+        margin-top: 0.25rem;
+    }
+    
+    .scenario-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .scenario-status {
+        margin-top: 0.5rem;
+    }
+    
+    .scenario-details,
+    .member-account-info {
+        grid-template-columns: 1fr;
+    }
+    
+    .detail-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .detail-value {
+        text-align: left;
+        margin-left: 0;
+        margin-top: 0.25rem;
+    }
+}

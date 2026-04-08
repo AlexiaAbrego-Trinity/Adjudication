@@ -1,0 +1,98 @@
+<template>
+    <div class="coverage-tab-container">
+        <!-- Loading State -->
+        <template if:true={isLoading}>
+            <div class="loading-container">
+                <lightning-spinner alternative-text="Loading coverage data..." size="medium"></lightning-spinner>
+                <p>Loading coverage information...</p>
+            </div>
+        </template>
+
+        <!-- Error State -->
+        <template if:true={error}>
+            <div class="error-container">
+                <lightning-icon icon-name="utility:error" variant="error" size="small"></lightning-icon>
+                <p class="error-message">Unable to load coverage data. Please contact your administrator.</p>
+            </div>
+        </template>
+
+        <!-- Data Display -->
+        <template if:true={hasCoverageData}>
+            <div class="tab-section-header">
+                <h3 class="section-title">
+                    <lightning-icon icon-name="standard:contract" size="small"></lightning-icon>
+                    Coverage Information
+                </h3>
+                <p class="section-subtitle">Member Account coverage details for Case {coverageData.caseNumber}</p>
+            </div>
+
+            <!-- Case Information -->
+            <template if:true={hasCaseInfo}>
+                <div class="data-card case-info-card">
+                    <h4>
+                        <lightning-icon icon-name="standard:case" size="small"></lightning-icon>
+                        Case Information
+                    </h4>
+                    <div class="summary-grid">
+                        <template if:true={coverageData.caseNumber}>
+                            <div class="summary-item">
+                                <span class="summary-label">Case Number:</span>
+                                <span class="summary-value">{coverageData.caseNumber}</span>
+                            </div>
+                        </template>
+                        <template if:true={coverageData.caseId}>
+                            <div class="summary-item">
+                                <span class="summary-label">Case ID:</span>
+                                <span class="summary-value">{coverageData.caseId}</span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Account Information -->
+            <template if:true={hasAccountInfo}>
+                <div class="data-card account-info-card">
+                    <h4>
+                        <lightning-icon icon-name="standard:account" size="small"></lightning-icon>
+                        Member Account Information
+                    </h4>
+                    <div class="summary-grid">
+                        <template if:true={coverageData.memberAccountName}>
+                            <div class="summary-item">
+                                <span class="summary-label">Member Account:</span>
+                                <span class="summary-value">{coverageData.memberAccountName}</span>
+                            </div>
+                        </template>
+                        <template if:true={coverageData.sakStatus}>
+                            <div class="summary-item">
+                                <span class="summary-label">SAK Status:</span>
+                                <span class="summary-value">{coverageData.sakStatus}</span>
+                            </div>
+                        </template>
+                        <template if:true={coverageData.accountExpirationDate}>
+                            <div class="summary-item">
+                                <span class="summary-label">Account Expiration:</span>
+                                <span class="summary-value">{coverageData.accountExpirationDate}</span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+
+        </template>
+
+        <!-- No Data State -->
+        <template if:false={hasCoverageData}>
+            <template if:false={isLoading}>
+                <template if:false={error}>
+                    <div class="no-data-container">
+                        <lightning-icon icon-name="utility:info" size="small"></lightning-icon>
+                        <p>No coverage data available for this case.</p>
+                    </div>
+                </template>
+            </template>
+        </template>
+    </div>
+</template>

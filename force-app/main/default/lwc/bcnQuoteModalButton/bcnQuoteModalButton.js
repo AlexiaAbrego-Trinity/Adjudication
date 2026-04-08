@@ -156,6 +156,18 @@ export default class BcnQuoteModalButton extends LightningElement {
     openModal() {
         this.showModal = true;
         console.log('TRINITY MODAL: Opened for record:', this.effectiveRecordId);
+
+        // MVADM-XXX FIX: Refresh grid data when modal opens
+        // Uses proper LWC @api method communication (respects Shadow DOM)
+        setTimeout(() => {
+            const tabContainer = this.template.querySelector('c-bcn-quote-tab-container');
+            if (tabContainer && typeof tabContainer.refreshGrid === 'function') {
+                tabContainer.refreshGrid();
+                console.log('TRINITY MODAL: Grid refresh triggered via @api method');
+            } else {
+                console.warn('TRINITY MODAL: Tab container not found or refreshGrid() not available');
+            }
+        }, 300); // 300ms delay to ensure DOM is fully rendered
     }
 
     closeModal() {

@@ -63,7 +63,13 @@
                                         <span class="trinity-bill-value trinity-bill-value-null">{billBCNNumber}</span>
                                     </template>
                                     <template if:false={billBCNNumberIsNull}>
-                                        <span class="trinity-bill-value">{billBCNNumber}</span>
+                                        <!-- CLIENT REQUEST: Show link to Bill for admins when case is adjudicated -->
+                                        <template if:true={showBillLink}>
+                                            <span class="trinity-bill-value trinity-bill-link" data-record-id={billRecordId} onclick={handleNavigateToBill}>{billBCNNumber}</span>
+                                        </template>
+                                        <template if:false={showBillLink}>
+                                            <span class="trinity-bill-value">{billBCNNumber}</span>
+                                        </template>
                                     </template>
                                 </div>
                                 <div class="trinity-bill-info-item">
@@ -74,6 +80,17 @@
                                     </template>
                                     <template if:false={billInvoiceIdIsNull}>
                                         <span class="trinity-bill-value">{billInvoiceId}</span>
+                                    </template>
+                                </div>
+                                <!-- RAY FEEDBACK #10: Total Paid display in Bill Header -->
+                                <div class="trinity-bill-info-item">
+                                    <lightning-icon icon-name="standard:currency" size="xx-small" class="trinity-bill-icon"></lightning-icon>
+                                    <span class="trinity-bill-label">Total Paid:</span>
+                                    <template if:true={billTotalPaidIsNull}>
+                                        <span class="trinity-bill-value trinity-bill-value-null">{billTotalPaid}</span>
+                                    </template>
+                                    <template if:false={billTotalPaidIsNull}>
+                                        <span class="trinity-bill-value">{billTotalPaid}</span>
                                     </template>
                                 </div>
                             </div>
@@ -90,7 +107,10 @@
                     <!-- Professional Content -->
                     <div class="trinity-modal-content">
                         <template if:true={effectiveRecordId}>
-                            <c-bcn-quote-tab-container record-id={effectiveRecordId}></c-bcn-quote-tab-container>
+                            <c-bcn-quote-tab-container
+                                record-id={effectiveRecordId}
+                                ontotalpaidchange={handleTotalPaidChange}>
+                            </c-bcn-quote-tab-container>
                         </template>
                         <template if:false={effectiveRecordId}>
                             <div class="trinity-loading-state">
